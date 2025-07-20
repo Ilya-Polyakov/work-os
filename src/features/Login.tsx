@@ -14,7 +14,7 @@ const Login = () => {
         }
         windowContent={
           <div className="flex flex-col gap-2">
-            <p>Type a user name and password to log into WorkOS.</p>
+            <p>Type a user name and password to log on to WorkOS.</p>
             <form>
               <div className="flex gap-2 mb-2">
                 <label className="w-[60px]" htmlFor="username">
