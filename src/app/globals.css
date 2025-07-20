@@ -1,12 +1,31 @@
 @import "tailwindcss";
 
+@theme { 
+  --breakpoint-xs: 25.75rem; /* 412px */
+  --breakpoint-3xl: 120rem; /* 1920px */
+ } 
+
+
 :root {
   --background: #008080;
   --foreground: #ffffff;
+  
+  /* Zoom scale factor - simulates browser zoom */
+  --zoom-scale: 1.5; /* 1 = normal, 1.5 = 150% zoom, 2 = 200% zoom */
 }
 
 body {
+  margin: 0;
+  padding: 0;
   background: var(--background);
   color: var(--foreground);
   font-family: "ms_sans_serif", Arial, Helvetica, sans-serif;
+  /* Keep body normal for proper centering calculations */
+}
+
+/* Apply scaling to a wrapper div instead of html/body */
+/* You'll need to wrap your content in a div with class="zoom-wrapper" */
+.zoom-wrapper {
+  transform: scale(var(--zoom-scale));
+  transform-origin: center center; /* Scale from center to preserve centering */
 }

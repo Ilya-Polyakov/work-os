@@ -1,19 +1,41 @@
+import Image from "next/image";
+import Window from "@/components/Window";
+
 const Login = () => {
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="window">
-        <div className="title-bar">
-          <div className="title-bar-text">A Window With Stuff In It</div>
-          <div className="title-bar-controls">
-            <button aria-label="Minimize"></button>
-            <button aria-label="Maximize"></button>
-            <button aria-label="Close"></button>
+    <div className="flex items-center justify-center min-h-screen p-4">
+      <Window
+        titleBarContent={
+          <>
+            <Image src="/logo.png" alt="WorkOS Logo" width={14} height={14} />
+            Welcome to WorkOS
+          </>
+        }
+        windowContent={
+          <div className="flex flex-col gap-2">
+            <p>Type a user name and password to log into WorkOS.</p>
+            <form>
+              <div className="flex gap-2 mb-2">
+                <label className="w-[60px]" htmlFor="username">
+                  User name:
+                </label>
+                <input type="text" id="username" className="flex-1" />
+              </div>
+              <div className="flex gap-2">
+                <label className="w-[60px]" htmlFor="password">
+                  Password:
+                </label>
+                <input type="password" id="password" className="flex-1" />
+              </div>
+
+              <div className="flex justify-center gap-4 mt-4">
+                <button type="submit">Log in</button>
+                <button type="button">About</button>
+              </div>
+            </form>
           </div>
-        </div>
-        <div className="window-body">
-          <p>There is so much room for activities!</p>
-        </div>
-      </div>
+        }
+      />
     </div>
   );
 };
