@@ -10,6 +10,50 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
 
+  const simulateLoading = (totalDuration: number, onComplete: () => void) => {
+    setLoadingProgress(0);
+    let currentProgress = 0;
+    const startTime = Date.now();
+
+    const updateProgress = () => {
+      const elapsedTime = Date.now() - startTime;
+
+      if (elapsedTime >= totalDuration) {
+        // Loading complete
+        setLoadingProgress(100);
+        setTimeout(() => {
+          onComplete();
+        }, 1000); // Small delay to show 100% completion
+        return;
+      }
+
+      // Calculate random increment (1-8% at a time)
+      const randomIncrement = Math.random() * 7 + 1;
+
+      // Don't let progress exceed what it should be based on time elapsed
+      const timeBasedProgress = (elapsedTime / totalDuration) * 85; // Cap at 85% until complete
+      const newProgress = Math.min(
+        currentProgress + randomIncrement,
+        timeBasedProgress,
+        95 // Never exceed 95% until completion
+      );
+
+      currentProgress = newProgress;
+      setLoadingProgress(Math.floor(currentProgress));
+
+      // Schedule next update with random delay (100-800ms)
+      const randomDelay = Math.random() * 700 + 100;
+      setTimeout(updateProgress, randomDelay);
+    };
+
+    updateProgress();
+  };
+
+  const handleLoadingComplete = () => {
+    console.log("Loading complete!");
+    setIsLoading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
@@ -27,6 +71,7 @@ const Login = () => {
 
     if (result.success) {
       setIsLoading(true);
+      simulateLoading(12000, handleLoadingComplete);
       console.log("Login successful");
     } else {
       window.alert("Login failed: Invalid username or password.");
