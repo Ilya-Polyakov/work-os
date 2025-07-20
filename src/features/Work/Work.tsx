@@ -13,6 +13,7 @@ const Work = () => {
 
   const displayName = username ? capitalizeWord(username) : "User";
 
+  // Enable cross-tab logout synchronization only
   useCrossTabSync();
 
   return (

@@ -6,6 +6,12 @@ interface WorkOSStore {
   setUsername: (username: string) => void;
   isLoggedIn: boolean;
   setIsLoggedIn: (isLoggedIn: boolean) => void;
+  isLoading: boolean;
+  setIsLoading: (isLoading: boolean) => void;
+  loadingProgress: number;
+  setLoadingProgress: (progress: number) => void;
+  loadingController: string | null; // Tab ID that controls loading
+  setLoadingController: (controllerId: string | null) => void;
   totalClicks: number;
   incrementClicks: () => void;
   resetClicks: () => void;
@@ -19,6 +25,14 @@ const useWorkOSStore = create<WorkOSStore>()(
       setUsername: (username: string) => set({ username }),
       isLoggedIn: false,
       setIsLoggedIn: (isLoggedIn: boolean) => set({ isLoggedIn }),
+      isLoading: false,
+      setIsLoading: (isLoading: boolean) => set({ isLoading }),
+      loadingProgress: 0,
+      setLoadingProgress: (progress: number) =>
+        set({ loadingProgress: progress }),
+      loadingController: null,
+      setLoadingController: (controllerId: string | null) =>
+        set({ loadingController: controllerId }),
       totalClicks: 0,
       incrementClicks: () =>
         set((state) => ({
@@ -29,6 +43,9 @@ const useWorkOSStore = create<WorkOSStore>()(
         set({
           isLoggedIn: false,
           username: "",
+          isLoading: false,
+          loadingProgress: 0,
+          loadingController: null,
         }),
     }),
     {
