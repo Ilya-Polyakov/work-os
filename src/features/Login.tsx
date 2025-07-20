@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import Window from "@/components/Window";
 
 const Login = () => {
@@ -30,7 +31,9 @@ const Login = () => {
 
               <div className="flex justify-center gap-4 mt-4">
                 <button type="submit">Log in</button>
-                <button type="button">About</button>
+                <Link href="/about">
+                  <button>About</button>
+                </Link>
               </div>
             </form>
           </div>
