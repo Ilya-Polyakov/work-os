@@ -20,13 +20,18 @@ const Login = () => {
                 <label className="w-[60px]" htmlFor="username">
                   User name:
                 </label>
-                <input type="text" id="username" className="flex-1" />
+                <input required type="text" id="username" className="flex-1" />
               </div>
               <div className="flex gap-2">
                 <label className="w-[60px]" htmlFor="password">
                   Password:
                 </label>
-                <input type="password" id="password" className="flex-1" />
+                <input
+                  required
+                  type="password"
+                  id="password"
+                  className="flex-1"
+                />
               </div>
 
               <div className="flex justify-center gap-4 mt-4">
