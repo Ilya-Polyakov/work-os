@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import Image from "next/image";
+
 import Window from "@/components/Window";
 import LoginForm from "./LoginForm";
 import LoginProgressBar from "./LoginProgressBar";
 
+import useWorkOSStore from "@/hooks/useWorkOSStore";
+
 const Login = () => {
+  const { setIsLoggedIn, setUsername } = useWorkOSStore();
+
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
 
@@ -50,7 +55,7 @@ const Login = () => {
   };
 
   const handleLoadingComplete = () => {
-    console.log("Loading complete!");
+    setIsLoggedIn(true);
     setIsLoading(false);
   };
 
@@ -72,6 +77,7 @@ const Login = () => {
     if (result.success) {
       setIsLoading(true);
       simulateLoading(12000, handleLoadingComplete);
+      setUsername(formData.get("username") as string);
       console.log("Login successful");
     } else {
       window.alert("Login failed: Invalid username or password.");

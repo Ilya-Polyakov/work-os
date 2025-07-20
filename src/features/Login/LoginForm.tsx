@@ -55,10 +55,14 @@ const LoginForm = ({ onSubmit }: LoginFormProps) => {
           </div>
 
           <div className="flex justify-center gap-4 mt-2">
-            <button type="submit">Log in</button>
             <Link href="/about">
-              <button type="button">About</button>
+              <button className="cursor-pointer" type="button">
+                About
+              </button>
             </Link>
+            <button className="cursor-pointer" type="submit">
+              Log in
+            </button>
           </div>
         </form>
       </div>
