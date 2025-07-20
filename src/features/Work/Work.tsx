@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import useWorkOSStore from "@/hooks/useWorkOSStore";
+import { useCrossTabSync } from "@/hooks/useCrossTabSync";
 import Window from "@/components/Window";
 
 import capitalizeWord from "@/utils/capitalizeWord";
@@ -11,6 +12,8 @@ const Work = () => {
     useWorkOSStore();
 
   const displayName = username ? capitalizeWord(username) : "User";
+
+  useCrossTabSync();
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4">
