@@ -23,7 +23,7 @@ const Login = () => {
     if (result.success) {
       console.log("Login successful");
     } else {
-      console.log("Login failed");
+      window.alert("Login failed: Invalid username or password.");
     }
   };
 
