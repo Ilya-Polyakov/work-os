@@ -1,27 +1,67 @@
 @import "tailwindcss";
 
-
 :root {
   --background: #008080;
   --foreground: #ffffff;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  
+  /* Base font size - adjust this single value to scale all fonts */
+  --base-font-size: 16px; /* Default browser font size */
+  
+  /* 98.css font size overrides in rem (based on 16px = 1rem) */
+  --font-size-small: 0.6875rem;   /* 11px converted to rem */
+  --font-size-normal: 0.8125rem;  /* 13px converted to rem */
+  --font-size-large: 1rem;        /* 16px converted to rem */
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: "ms_sans_serif", Arial, Helvetica, sans-serif;
+  /* Set the base font size here - this affects all rem calculations */
+  font-size: var(--base-font-size);
+}
+
+/* 98.css font size overrides */
+/* Override the default 98.css font sizes with our custom rem values */
+
+/* Window and dialog text */
+.window-body, 
+.window-body p,
+.window-body div,
+.window-body span {
+  font-size: var(--font-size-normal) !important;
+}
+
+/* Button text */
+button,
+.btn {
+  font-size: var(--font-size-normal) !important;
+}
+
+/* Menu text */
+.menu-item,
+.context-menu-item {
+  font-size: var(--font-size-normal) !important;
+}
+
+/* Title bar text */
+.title-bar-text {
+  font-size: var(--font-size-normal) !important;
+}
+
+/* Form elements */
+input, 
+textarea, 
+select {
+  font-size: var(--font-size-normal) !important;
+}
+
+/* Status bar */
+.status-bar {
+  font-size: var(--font-size-small) !important;
+}
+
+/* Tab text */
+.tabs .tab {
+  font-size: var(--font-size-normal) !important;
 }
