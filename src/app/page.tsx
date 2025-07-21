@@ -15,7 +15,7 @@ export default function Home() {
   return (
     <main className="relative h-screen w-screen">
       {isLoggedIn ? <Work /> : <Login />}
-      <ModalWindow isOpen={true} onClose={() => setModalIsOpen(false)} />
+      <ModalWindow isOpen={modalIsOpen} onClose={() => setModalIsOpen(false)} />
     </main>
   );
 }

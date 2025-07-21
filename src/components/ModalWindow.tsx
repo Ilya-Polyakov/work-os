@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 
 import Window from "./Window";
+import useWorkOSStore from "@/hooks/useWorkOSStore";
+import { useIdleWarning } from "@/hooks/useIdleWarning";
 
 interface ModalWindowProps {
   isOpen: boolean;
@@ -11,6 +13,16 @@ interface ModalWindowProps {
 
 const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
   const [isMounted, setIsMounted] = useState(false);
+  const {
+    idleWarningCount,
+    isUserActive,
+    idleCountdown,
+    isLoggedOutFromIdle,
+    setIsIdleWarningActive,
+  } = useWorkOSStore();
+
+  // Get idle warning functions
+  const { handleModalDismissal } = useIdleWarning();
 
   useEffect(() => {
     // Set mounted to true after component mounts (client-side)
@@ -20,7 +32,64 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
   // Don't render anything on server-side or if not open
   if (!isMounted || !isOpen) return null;
 
-  const isActive = false; // Placeholder for active state logic
+  // Close modal handler
+  const handleClose = () => {
+    console.log("Modal closing - user clicked continue");
+
+    // Handle modal dismissal logic (increment warning count if user was active)
+    handleModalDismissal();
+
+    setIsIdleWarningActive(false);
+    onClose();
+
+    // Don't restart idle timer automatically - wait for real user activity
+    // The idle timer will restart when handleActivity detects real activity
+  };
+
+  // Get warning content based on state
+  const getWarningContent = () => {
+    if (isLoggedOutFromIdle) {
+      return {
+        title: "Logged Out",
+        message: "You have been logged out due to inactivity.",
+        showCountdown: false,
+        showButton: true,
+        buttonText: "OK",
+      };
+    }
+
+    const warningTitles = ["First Warning", "Second Warning", "Final Warning"];
+
+    const warningMessages = [
+      "You have been idle for over 30 seconds.",
+      "Return to work immediately.",
+      "There will be consequences.",
+    ];
+
+    const title = warningTitles[idleWarningCount] || "Warning";
+    const message = warningMessages[idleWarningCount] || "You have been idle.";
+
+    if (isUserActive) {
+      return {
+        title,
+        message: "Good, you're back to work!",
+        showCountdown: false,
+        showButton: true,
+        buttonText: "Continue",
+      };
+    }
+
+    return {
+      title,
+      message,
+      showCountdown: true,
+      showButton: true,
+      buttonText: "Continue",
+    };
+  };
+
+  const content = getWarningContent();
+  const eyesState = isUserActive ? "calm" : "angry";
 
   return createPortal(
     <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
@@ -42,21 +111,25 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
           <>
             <div className="flex flex-col items-center">
               <Image
-                src={`/images/eyes-${isActive ? "calm" : "angry"}.png`}
-                alt="Angry Eyes"
+                src={`/images/eyes-${eyesState}.png`}
+                alt={`${eyesState} Eyes`}
                 width={128}
                 height={128}
               />
               <div className="flex flex-col items-center gap-2">
                 <p>
-                  <strong>First Warning</strong>
+                  <strong>{content.title}</strong>
                 </p>
 
-                <p>You have been idle for over 30 seconds.</p>
-                <p>
-                  You have <strong>10 seconds</strong> to return.
-                </p>
-                <button onClick={onClose}>Continue</button>
+                <p>{content.message}</p>
+                {content.showCountdown && (
+                  <p>
+                    You have <strong>{idleCountdown} seconds</strong> to return.
+                  </p>
+                )}
+                {content.showButton && (
+                  <button onClick={handleClose}>{content.buttonText}</button>
+                )}
               </div>
             </div>
           </>

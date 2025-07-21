@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import useWorkOSStore from "@/hooks/useWorkOSStore";
 import { useCrossTabSync } from "@/hooks/useCrossTabSync";
+import { useIdleWarning } from "@/hooks/useIdleWarning";
 import Window from "@/components/Window";
 
 import capitalizeWord from "@/utils/capitalizeWord";
@@ -15,6 +16,9 @@ const Work = () => {
 
   // Enable cross-tab logout synchronization only
   useCrossTabSync();
+
+  // Enable idle warning system
+  useIdleWarning();
 
   return (
     <div className="flex items-center justify-center min-h-screen px-4 py-24">
