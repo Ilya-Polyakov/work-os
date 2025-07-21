@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 import Window from "@/components/Window";
 import LoginForm from "./LoginForm";
@@ -22,39 +22,25 @@ const Login = () => {
   } = useWorkOSStore();
 
   // Get cross-tab sync functions
-  const { tabId } = useCrossTabSync();
+  const { simulateLoading, tabId } = useCrossTabSync();
 
-  // Track if we've already handled recovery to prevent multiple recoveries
-  const recoveryHandled = useRef(false);
+  // Local loading state that prevents flickering
+  const [localIsLoading, setLocalIsLoading] = useState(isLoading);
 
-  // Detect and recover from interrupted loading sessions
+  // Sync local loading state with store, but prevent it from going false too quickly
   useEffect(() => {
-    // Only run recovery check on initial mount
-    const checkForInterruptedSession = () => {
-      const currentState = useWorkOSStore.getState();
-      if (
-        currentState.isLoading &&
-        currentState.loadingProgress < 100 &&
-        !recoveryHandled.current
-      ) {
-        console.log("Detected interrupted loading session, recovering...");
-        recoveryHandled.current = true;
+    if (isLoading) {
+      // If store says loading, immediately set local to loading
+      setLocalIsLoading(true);
+    } else {
+      // If store says not loading, add a small delay to prevent flicker
+      const delay = setTimeout(() => {
+        setLocalIsLoading(false);
+      }, 50); // 50ms delay to let cross-tab sync work
 
-        // Complete the loading immediately since we can't resume the exact timer
-        setTimeout(() => {
-          useWorkOSStore.getState().setLoadingProgress(100);
-          setTimeout(() => {
-            const state = useWorkOSStore.getState();
-            state.setIsLoggedIn(true);
-            state.setIsLoading(false);
-          }, 1000);
-        }, 1500);
-      }
-    };
-
-    // Run the check once on mount
-    checkForInterruptedSession();
-  }, []);
+      return () => clearTimeout(delay);
+    }
+  }, [isLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,56 +65,17 @@ const Login = () => {
       setIsLoading(true);
       setUsername(formData.get("username") as string);
 
-      // Realistic loading simulation with random intervals
-      const simulateRealisticLoading = (totalDuration: number) => {
-        setLoadingProgress(0);
-        let currentProgress = 0;
-        const startTime = Date.now();
-
-        const updateProgress = () => {
-          // Check if we're still the controller (another tab might have taken over)
-          const currentState = useWorkOSStore.getState();
-          if (currentState.loadingController !== tabId) {
-            return; // Stop if we're no longer the controller
-          }
-
-          const elapsedTime = Date.now() - startTime;
-
-          if (elapsedTime >= totalDuration) {
-            // Loading complete
-            setLoadingProgress(100);
-            setTimeout(() => {
-              setIsLoggedIn(true);
-              setIsLoading(false);
-              setLoadingController(null); // Release control
-            }, 1000); // Small delay to show 100% completion
-            return;
-          }
-
-          // Calculate random increment (1-8% at a time)
-          const randomIncrement = Math.random() * 7 + 1;
-
-          // Don't let progress exceed what it should be based on time elapsed
-          const timeBasedProgress = (elapsedTime / totalDuration) * 85; // Cap at 85% until complete
-          const newProgress = Math.min(
-            currentProgress + randomIncrement,
-            timeBasedProgress,
-            95 // Never exceed 95% until completion
-          );
-
-          currentProgress = newProgress;
-          setLoadingProgress(Math.floor(currentProgress));
-
-          // Schedule next update with random delay (100-800ms)
-          const randomDelay = Math.random() * 700 + 100;
-          setTimeout(updateProgress, randomDelay);
-        };
-
-        updateProgress();
-      };
-
-      // Start the 12-second realistic loading simulation
-      simulateRealisticLoading(12000);
+      // Use cross-tab synchronized loading simulation
+      simulateLoading(
+        12000,
+        () => {
+          setIsLoggedIn(true);
+          setIsLoading(false);
+          setLoadingProgress(0);
+          setLoadingController(null);
+        },
+        tabId
+      );
     } else {
       window.alert("Login failed: Invalid username or password.");
     }
@@ -144,7 +91,7 @@ const Login = () => {
           </>
         }
         windowContent={
-          isLoading ? (
+          localIsLoading ? (
             <LoginProgressBar loadingProgress={loadingProgress} />
           ) : (
             <LoginForm onSubmit={handleSubmit} />
