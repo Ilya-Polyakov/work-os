@@ -34,11 +34,8 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
 
   // Close modal handler
   const handleClose = () => {
-    console.log("Modal closing - user clicked continue");
-
     // If this is a logout modal, handle differently
     if (isLoggedOutFromIdle) {
-      console.log("Handling logout modal dismissal");
       // Reset store and actually log the user out
       const { resetStore } = useWorkOSStore.getState();
       resetStore();
