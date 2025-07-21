@@ -341,10 +341,17 @@ export const useIdleWarning = () => {
             if (isIdleWarningActive) {
               setIsUserActive(true);
               if (countdownTimerRef.current) {
-                clearInterval(countdownTimerRef.current);
+                clearTimeout(countdownTimerRef.current);
                 countdownTimerRef.current = null;
               }
               isCountingDownRef.current = false;
+
+              // CRITICAL FIX: Start idle timer for calm state in cross-tab sync
+              // When one browser becomes active, all browsers should enter calm state
+              // and start monitoring for idle behavior
+              if (useWorkOSStore.getState().idleWarningCount < 3) {
+                resetIdleTimer();
+              }
             }
 
             // CRITICAL FIX: Always reset idle timer when receiving cross-tab activity
