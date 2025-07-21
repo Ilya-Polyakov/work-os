@@ -139,12 +139,12 @@ export const useIdleWarning = () => {
           console.log("User became idle again while modal is open", {
             isUserActive: useWorkOSStore.getState().isUserActive,
             idleWarningCount,
-            currentTime: Date.now()
+            currentTime: Date.now(),
           });
-          
+
           // Get the current user active state from the store to avoid stale closure values
           const currentIsUserActive = useWorkOSStore.getState().isUserActive;
-          
+
           // If user was in calm state (active), advance to next warning
           if (currentIsUserActive) {
             console.log("User was in calm state - advancing to next warning");
@@ -182,7 +182,9 @@ export const useIdleWarning = () => {
             );
           } else {
             // User was already idle, just restart countdown at same warning level
-            console.log("User was already idle - restarting countdown at same level");
+            console.log(
+              "User was already idle - restarting countdown at same level"
+            );
             setIsUserActive(false);
             startCountdown();
           }
@@ -244,7 +246,7 @@ export const useIdleWarning = () => {
       console.log("User became active during warning - entering calm state", {
         idleWarningCount,
         isIdleWarningActive,
-        isUserActive
+        isUserActive,
       });
       setIsUserActive(true);
 
@@ -344,7 +346,7 @@ export const useIdleWarning = () => {
           if (e.newValue) {
             const data = JSON.parse(e.newValue);
             setLastActivityTime(data.timestamp);
-            
+
             // If warning is active, handle warning-specific activity
             if (isIdleWarningActive) {
               setIsUserActive(true);
@@ -354,10 +356,13 @@ export const useIdleWarning = () => {
               }
               isCountingDownRef.current = false;
             }
-            
+
             // CRITICAL FIX: Always reset idle timer when receiving cross-tab activity
             // This prevents tabs from triggering warnings when user is active in other tabs
-            if (useWorkOSStore.getState().idleWarningCount < 3 && !isIdleWarningActive) {
+            if (
+              useWorkOSStore.getState().idleWarningCount < 3 &&
+              !isIdleWarningActive
+            ) {
               resetIdleTimer();
             }
           }
