@@ -67,7 +67,7 @@ const Login = () => {
 
       // Use cross-tab synchronized loading simulation
       simulateLoading(
-        100,
+        12000,
         () => {
           setIsLoggedIn(true);
           setIsLoading(false);

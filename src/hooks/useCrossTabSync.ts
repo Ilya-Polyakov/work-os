@@ -233,10 +233,12 @@ export const useCrossTabSync = () => {
           // Ignore redundant storage events to prevent infinite loops
           if (
             newStateData?.isLoggedIn === currentlyLoggedIn &&
+            newStateData?.isLoading === currentIsLoading &&
             newStateData?.username === currentUsername &&
-            newStateData?.isLoading === currentIsLoading
+            newStateData?.loadingProgress ===
+              useWorkOSStore.getState().loadingProgress
           ) {
-            // This is the same state we already have - ignore it
+            // No state change, ignore event
             return;
           }
 
@@ -280,54 +282,49 @@ export const useCrossTabSync = () => {
 
           // Handle controller loss: complete login immediately instead of competing
           // BUT: Don't auto-complete if username is empty (indicates logout)
+          // Controller loss: complete login only if not already logged in
           if (
             newStateData?.isLoading &&
-            !newStateData?.loadingController && // No controller
+            !newStateData?.loadingController &&
             !currentlyLoggedIn &&
-            currentIsLoading && // We're already in loading state
-            newStateData?.username && // There's a username being loaded
-            newStateData.username.trim() !== "" // Make sure it's not empty (logout state)
+            currentIsLoading &&
+            newStateData?.username &&
+            newStateData.username.trim() !== ""
           ) {
-            // Wait a bit to see if the controller really is gone
-            // This prevents immediate completion when there are just temporary storage events
             setTimeout(() => {
               const latestState = useWorkOSStore.getState();
-              const currentLoadingState = latestState.isLoading; // Get fresh loading state
-
-              // Double-check that we still don't have a controller after the delay
-              // AND that username is still not empty (not a logout)
               if (
                 latestState.isLoading &&
                 !latestState.loadingController &&
                 !latestState.isLoggedIn &&
-                currentLoadingState && // Use fresh loading state instead of stale closure variable
                 latestState.username &&
-                latestState.username.trim() !== "" // Still not a logout state
+                latestState.username.trim() !== ""
               ) {
-                setLoadingProgress(100);
-                setTimeout(() => {
-                  setIsLoggedIn(true);
-                  setIsLoading(false);
-                }, 500); // Brief delay to show 100% completion
+                // Only complete login if not already logged in
+                if (!latestState.isLoggedIn) {
+                  setLoadingProgress(100);
+                  setTimeout(() => {
+                    setIsLoggedIn(true);
+                    setIsLoading(false);
+                  }, 500);
+                }
               }
-            }, 1500); // Wait 1.5 seconds to confirm controller is really gone
+            }, 1500);
           }
 
-          // Handle login start (another tab started logging in) - ONLY if we're not already synced
+          // Login completion: only if not already logged in
           if (
-            newStateData?.isLoading &&
+            newStateData?.isLoggedIn &&
             newStateData?.username &&
-            newStateData?.loadingController &&
-            newStateData.loadingController !== tabId.current &&
+            !newStateData?.isLoading &&
             !currentlyLoggedIn &&
-            !currentIsLoading // Only sync if we're NOT already loading
+            !shouldIgnoreLogin
           ) {
-            // Sync the loading state, username, and controller info
-            setIsLoading(true);
-            setUsername(newStateData.username);
-            setLoadingController(newStateData.loadingController); // CRITICAL: Sync the controller too!
-            // Initialize the progress tracking timestamp
-            lastProgressUpdate.current = Date.now();
+            if (!currentlyLoggedIn) {
+              setIsLoggedIn(true);
+              setIsLoading(false);
+              setUsername(newStateData.username);
+            }
           }
 
           // Sync loading progress from the controlling tab (but only if we're not the controller and already loading)
@@ -335,13 +332,10 @@ export const useCrossTabSync = () => {
             newStateData?.isLoading &&
             newStateData?.loadingController &&
             newStateData.loadingController !== tabId.current &&
-            newStateData?.loadingProgress !== undefined &&
-            !currentlyLoggedIn &&
+            typeof newStateData.loadingProgress === "number" &&
             currentIsLoading // Only sync progress if we're already in loading state
           ) {
-            // Only sync progress, don't interfere with the simulation
             setLoadingProgress(newStateData.loadingProgress);
-            // Track that we saw a progress update (for controller health monitoring)
             lastProgressUpdate.current = Date.now();
           }
 
