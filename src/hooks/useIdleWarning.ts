@@ -114,8 +114,7 @@ export const useIdleWarning = () => {
     if (
       isLoggedIn &&
       !isCountingDownRef.current &&
-      !useWorkOSStore.getState().isLoggedOutFromIdle &&
-      !isIdleWarningActive
+      !useWorkOSStore.getState().isLoggedOutFromIdle
     ) {
       idleTimerRef.current = setTimeout(() => {
         // Check if this is the 4th idle period (after 3 warnings)
@@ -136,39 +135,57 @@ export const useIdleWarning = () => {
         }
 
         if (isIdleWarningActive) {
-          // User became idle again while modal is open - advance to next warning
-          const nextWarningCount = idleWarningCount + 1;
+          // User became idle again while modal is open
+          console.log("User became idle again while modal is open", {
+            isUserActive: useWorkOSStore.getState().isUserActive,
+            idleWarningCount,
+            currentTime: Date.now()
+          });
+          
+          // Get the current user active state from the store to avoid stale closure values
+          const currentIsUserActive = useWorkOSStore.getState().isUserActive;
+          
+          // If user was in calm state (active), advance to next warning
+          if (currentIsUserActive) {
+            console.log("User was in calm state - advancing to next warning");
+            const nextWarningCount = idleWarningCount + 1;
 
-          // If this would be the 4th warning, log out immediately
-          if (nextWarningCount >= 3) {
-            console.log("Would be 4th warning - immediate logout instead");
-            setIsLoggedOutFromIdle(true);
-            setModalIsOpen(true);
+            // If this would be the 4th warning, log out immediately
+            if (nextWarningCount >= 3) {
+              console.log("Would be 4th warning - immediate logout instead");
+              setIsLoggedOutFromIdle(true);
+              setModalIsOpen(true);
 
-            // Broadcast logout to other tabs
+              // Broadcast logout to other tabs
+              localStorage.setItem(
+                "idle-logout",
+                JSON.stringify({
+                  timestamp: Date.now(),
+                  tabId: Math.random().toString(36).substr(2, 9),
+                })
+              );
+              return;
+            }
+
+            setIdleWarningCount(nextWarningCount);
+            setIsUserActive(false);
+            startCountdown();
+
+            // Broadcast warning advancement to other tabs
             localStorage.setItem(
-              "idle-logout",
+              "idle-warning-triggered",
               JSON.stringify({
+                warningCount: nextWarningCount,
                 timestamp: Date.now(),
                 tabId: Math.random().toString(36).substr(2, 9),
               })
             );
-            return;
+          } else {
+            // User was already idle, just restart countdown at same warning level
+            console.log("User was already idle - restarting countdown at same level");
+            setIsUserActive(false);
+            startCountdown();
           }
-
-          setIdleWarningCount(nextWarningCount);
-          setIsUserActive(false);
-          startCountdown();
-
-          // Broadcast warning advancement to other tabs
-          localStorage.setItem(
-            "idle-warning-triggered",
-            JSON.stringify({
-              warningCount: nextWarningCount,
-              timestamp: Date.now(),
-              tabId: Math.random().toString(36).substr(2, 9),
-            })
-          );
         } else {
           // First idle timeout - show initial warning modal
           setIsIdleWarningActive(true);
@@ -224,6 +241,11 @@ export const useIdleWarning = () => {
 
     // If warning is active and user becomes active for the first time
     if (isIdleWarningActive && !isUserActive) {
+      console.log("User became active during warning - entering calm state", {
+        idleWarningCount,
+        isIdleWarningActive,
+        isUserActive
+      });
       setIsUserActive(true);
 
       // Stop countdown timer when user becomes active
@@ -242,6 +264,7 @@ export const useIdleWarning = () => {
       // Resume idle timer now that user is active - mouse movement will reset this
       // But don't reset if we're at warning count >= 3
       if (useWorkOSStore.getState().idleWarningCount < 3) {
+        console.log("Resuming idle timer in calm state");
         resetIdleTimer();
       }
       return;
@@ -274,6 +297,7 @@ export const useIdleWarning = () => {
     isLoggedIn,
     isIdleWarningActive,
     isUserActive,
+    idleWarningCount,
     setLastActivityTime,
     setIsUserActive,
     resetIdleTimer,
