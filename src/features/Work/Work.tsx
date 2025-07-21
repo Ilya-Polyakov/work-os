@@ -21,7 +21,7 @@ const Work = () => {
   useIdleWarning();
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-4 py-24">
+    <div className="flex items-center justify-center min-h-screen">
       <Window
         titleBarContent={
           <>

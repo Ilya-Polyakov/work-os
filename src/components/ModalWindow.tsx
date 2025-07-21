@@ -73,8 +73,8 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
 
     if (isUserActive) {
       return {
-        title,
-        message: "Good, you're back to work!",
+        title: "Welcome back, Employee!",
+        message: "Great, you're working again.",
         showCountdown: false,
         showButton: true,
         buttonText: "Continue",
