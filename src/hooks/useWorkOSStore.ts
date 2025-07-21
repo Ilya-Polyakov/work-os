@@ -15,6 +15,8 @@ interface WorkOSStore {
   totalClicks: number;
   incrementClicks: () => void;
   resetClicks: () => void;
+  modalIsOpen: boolean;
+  setModalIsOpen: (isOpen: boolean) => void;
   resetStore: () => void;
 }
 
@@ -39,6 +41,8 @@ const useWorkOSStore = create<WorkOSStore>()(
           totalClicks: state.totalClicks + 1,
         })),
       resetClicks: () => set({ totalClicks: 0 }),
+      modalIsOpen: true,
+      setModalIsOpen: (isOpen: boolean) => set({ modalIsOpen: isOpen }),
       resetStore: () =>
         set({
           isLoggedIn: false,
@@ -46,6 +50,7 @@ const useWorkOSStore = create<WorkOSStore>()(
           isLoading: false,
           loadingProgress: 0,
           loadingController: null,
+          modalIsOpen: false,
         }),
     }),
     {
