@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+// Add debounce tracking for resetStore
+let lastResetTime = 0;
+let isLoggingOut = false; // Flag to prevent multiple logout attempts
+
 interface WorkOSStore {
   username: string;
   setUsername: (username: string) => void;
@@ -36,6 +40,7 @@ interface WorkOSStore {
   resetIdleWarningSystem: () => void;
 
   resetStore: () => void;
+  clearLogoutFlag: () => void; // Add function to clear the logout flag
 }
 
 const useWorkOSStore = create<WorkOSStore>()(
@@ -44,7 +49,12 @@ const useWorkOSStore = create<WorkOSStore>()(
       username: "",
       setUsername: (username: string) => set({ username }),
       isLoggedIn: false,
-      setIsLoggedIn: (isLoggedIn: boolean) => set({ isLoggedIn }),
+      setIsLoggedIn: (isLoggedIn: boolean) => {
+        if (isLoggedIn) {
+          isLoggingOut = false; // Reset logout flag on successful login
+        }
+        set({ isLoggedIn });
+      },
       isLoading: false,
       setIsLoading: (isLoading: boolean) => set({ isLoading }),
       loadingProgress: 0,
@@ -98,8 +108,32 @@ const useWorkOSStore = create<WorkOSStore>()(
           isLoggedOutFromIdle: false,
         }),
 
-      resetStore: () =>
-        set({
+      resetStore: () => {
+        const now = Date.now();
+
+        // Prevent multiple logout attempts
+        if (isLoggingOut) {
+          return;
+        }
+
+        // Debounce: prevent multiple rapid calls within 1 second
+        if (now - lastResetTime < 1000) {
+          return;
+        }
+
+        lastResetTime = now;
+        isLoggingOut = true;
+
+        // Broadcast logout to other tabs before resetting store
+        localStorage.setItem(
+          "user-logout",
+          JSON.stringify({
+            timestamp: Date.now(),
+            tabId: Math.random().toString(36).substr(2, 9),
+          })
+        );
+
+        const resetState = {
           isLoggedIn: false,
           username: "",
           isLoading: false,
@@ -113,7 +147,29 @@ const useWorkOSStore = create<WorkOSStore>()(
           isUserActive: false,
           lastActivityTime: Date.now(),
           isLoggedOutFromIdle: false,
-        }),
+        };
+
+        set(resetState);
+
+        // Force a manual update to the persistent storage to ensure it's saved
+        setTimeout(() => {
+          // Double-check and force update if needed
+          const currentState = useWorkOSStore.getState();
+
+          // If username is still not empty, force clear it
+          if (currentState.username !== "") {
+            set({
+              username: "",
+              isLoggedIn: false,
+              isLoggedOutFromIdle: false,
+            });
+          }
+        }, 50);
+      },
+
+      clearLogoutFlag: () => {
+        isLoggingOut = false;
+      },
     }),
     {
       name: "work-os-storage",

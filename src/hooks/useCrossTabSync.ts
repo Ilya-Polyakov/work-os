@@ -17,6 +17,7 @@ export const useCrossTabSync = () => {
     loadingController,
     isLoading: currentIsLoading,
     totalClicks: currentTotalClicks,
+    clearLogoutFlag, // Add this to access the logout flag reset function
   } = useWorkOSStore();
 
   // Generate a unique tab ID with timestamp for priority ordering
@@ -50,11 +51,13 @@ export const useCrossTabSync = () => {
         const currentState = useWorkOSStore.getState();
 
         // If no progress update for 3 seconds and we're still loading, assume controller is dead
+        // BUT: Don't auto-complete if username is empty (indicates logout in progress)
         if (
           timeSinceLastUpdate > 3000 &&
           currentState.isLoading &&
           !currentState.isLoggedIn &&
-          currentState.username
+          currentState.username &&
+          currentState.username.trim() !== "" // Make sure it's not empty (logout state)
         ) {
           // Clear the health check
           if (controllerHealthCheck.current) {
@@ -112,11 +115,13 @@ export const useCrossTabSync = () => {
     }
 
     // CRITICAL: Handle stuck loading state (loading=true but no controller)
+    // BUT: Don't auto-complete if username is empty (indicates logout)
     if (
       currentState.isLoading &&
       !currentState.loadingController && // No controller
       !currentState.isLoggedIn &&
-      currentState.username // There's a username being loaded
+      currentState.username && // There's a username being loaded
+      currentState.username.trim() !== "" // Make sure it's not empty
     ) {
       // Complete the login immediately since we're stuck
       setLoadingProgress(100);
@@ -195,11 +200,73 @@ export const useCrossTabSync = () => {
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
+      // Handle explicit user logout broadcast - this takes PRIORITY over everything else
+      if (e.key === "user-logout" && e.newValue) {
+        // Just set the logged out state - no navigation needed since we're already at "/"
+        // Process logout broadcast regardless of current login state to ensure all tabs sync
+        setIsLoggedIn(false);
+        setUsername("");
+
+        // Also clear any idle warning state
+        const {
+          setIsLoggedOutFromIdle,
+          setModalIsOpen,
+          resetIdleWarningSystem,
+        } = useWorkOSStore.getState();
+        setIsLoggedOutFromIdle(false);
+        setModalIsOpen(false);
+        resetIdleWarningSystem();
+
+        // Clear the global logout flag to allow future logouts
+        setTimeout(() => {
+          clearLogoutFlag();
+        }, 100);
+        return;
+      }
+
       // Check if the change is to our work-os-storage key
       if (e.key === "work-os-storage" && e.newValue) {
         try {
           const newState = JSON.parse(e.newValue);
           const newStateData = newState.state;
+
+          // Ignore redundant storage events to prevent infinite loops
+          if (
+            newStateData?.isLoggedIn === currentlyLoggedIn &&
+            newStateData?.username === currentUsername &&
+            newStateData?.isLoading === currentIsLoading
+          ) {
+            // This is the same state we already have - ignore it
+            return;
+          }
+
+          console.log("🔍 work-os-storage event - newStateData:", {
+            isLoggedIn: newStateData?.isLoggedIn,
+            username: newStateData?.username,
+            isLoading: newStateData?.isLoading,
+          });
+          console.log("🔍 Current local state:", {
+            currentlyLoggedIn,
+            currentUsername,
+            currentIsLoading,
+          });
+
+          // CRITICAL: Check if we just received a user-logout broadcast recently
+          // If so, ignore any login-related storage events for a brief period
+          const recentLogout = localStorage.getItem("user-logout");
+          let shouldIgnoreLogin = false;
+          if (recentLogout) {
+            try {
+              const logoutData = JSON.parse(recentLogout);
+              const timeSinceLogout = Date.now() - logoutData.timestamp;
+              if (timeSinceLogout < 2000) {
+                // 2 second window
+                shouldIgnoreLogin = true;
+              }
+            } catch {
+              // Ignore parsing errors
+            }
+          }
 
           // Handle totalClicks sync (sync clicks across tabs)
           if (
@@ -211,20 +278,15 @@ export const useCrossTabSync = () => {
             useWorkOSStore.setState({ totalClicks: newStateData.totalClicks });
           }
 
-          // Handle logout (another tab logged out)
-          if (!newStateData?.username && currentlyLoggedIn) {
-            // Force a page reload to redirect to login
-            window.location.href = "/";
-            return;
-          }
-
           // Handle controller loss: complete login immediately instead of competing
+          // BUT: Don't auto-complete if username is empty (indicates logout)
           if (
             newStateData?.isLoading &&
             !newStateData?.loadingController && // No controller
             !currentlyLoggedIn &&
             currentIsLoading && // We're already in loading state
-            newStateData?.username // There's a username being loaded
+            newStateData?.username && // There's a username being loaded
+            newStateData.username.trim() !== "" // Make sure it's not empty (logout state)
           ) {
             // Wait a bit to see if the controller really is gone
             // This prevents immediate completion when there are just temporary storage events
@@ -233,11 +295,14 @@ export const useCrossTabSync = () => {
               const currentLoadingState = latestState.isLoading; // Get fresh loading state
 
               // Double-check that we still don't have a controller after the delay
+              // AND that username is still not empty (not a logout)
               if (
                 latestState.isLoading &&
                 !latestState.loadingController &&
                 !latestState.isLoggedIn &&
-                currentLoadingState // Use fresh loading state instead of stale closure variable
+                currentLoadingState && // Use fresh loading state instead of stale closure variable
+                latestState.username &&
+                latestState.username.trim() !== "" // Still not a logout state
               ) {
                 setLoadingProgress(100);
                 setTimeout(() => {
@@ -281,16 +346,27 @@ export const useCrossTabSync = () => {
           }
 
           // Handle login completion (another tab finished logging in)
+          // BUT: Don't auto-login if the storage event shows logout (no username)
+          // AND: Don't auto-login if we just received a logout broadcast
           if (
             newStateData?.isLoggedIn &&
             newStateData?.username &&
             !newStateData?.isLoading &&
-            !currentlyLoggedIn
+            !currentlyLoggedIn &&
+            !shouldIgnoreLogin // Don't auto-login if recent logout detected
           ) {
             // Complete the login in this tab too
             setIsLoggedIn(true);
             setIsLoading(false);
             setUsername(newStateData.username);
+          } else if (
+            !newStateData?.isLoggedIn &&
+            !newStateData?.username &&
+            currentlyLoggedIn
+          ) {
+            // Another tab logged out - sync the logout
+            setIsLoggedIn(false);
+            setUsername("");
           }
         } catch (error) {
           console.error("Error parsing storage event:", error);
@@ -313,6 +389,7 @@ export const useCrossTabSync = () => {
     setIsLoading,
     setLoadingProgress,
     setLoadingController,
+    clearLogoutFlag,
   ]);
 
   // Only clear controller on actual tab close, not on tab switch/minimize
