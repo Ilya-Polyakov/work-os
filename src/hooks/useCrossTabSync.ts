@@ -30,26 +30,12 @@ export const useCrossTabSync = () => {
 
   // Health check for controller when we're syncing
   useEffect(() => {
-    console.log(`Tab ${tabId.current}: Health check useEffect triggered:`, {
-      currentIsLoading,
-      loadingController,
-      isOurController: loadingController === tabId.current,
-      shouldStartHealthCheck:
-        currentIsLoading &&
-        loadingController &&
-        loadingController !== tabId.current,
-    });
-
     // Only run health check if we're currently loading but not the controller
     if (
       currentIsLoading &&
       loadingController &&
       loadingController !== tabId.current
     ) {
-      console.log(
-        `Tab ${tabId.current}: Starting controller health check for ${loadingController}`
-      );
-
       // Clear any existing health check
       if (controllerHealthCheck.current) {
         clearInterval(controllerHealthCheck.current);
@@ -63,16 +49,6 @@ export const useCrossTabSync = () => {
         const timeSinceLastUpdate = Date.now() - lastProgressUpdate.current;
         const currentState = useWorkOSStore.getState();
 
-        console.log(
-          `Tab ${tabId.current}: Health check - Time since last update: ${timeSinceLastUpdate}ms, State:`,
-          {
-            isLoading: currentState.isLoading,
-            isLoggedIn: currentState.isLoggedIn,
-            hasUsername: !!currentState.username,
-            controller: currentState.loadingController,
-          }
-        );
-
         // If no progress update for 3 seconds and we're still loading, assume controller is dead
         if (
           timeSinceLastUpdate > 3000 &&
@@ -80,10 +56,6 @@ export const useCrossTabSync = () => {
           !currentState.isLoggedIn &&
           currentState.username
         ) {
-          console.log(
-            `Tab ${tabId.current}: Controller appears dead (no updates for 3+ seconds), completing login...`
-          );
-
           // Clear the health check
           if (controllerHealthCheck.current) {
             clearInterval(controllerHealthCheck.current);
@@ -101,7 +73,6 @@ export const useCrossTabSync = () => {
     } else {
       // Clear health check if we're not in a syncing state
       if (controllerHealthCheck.current) {
-        console.log(`Tab ${tabId.current}: Clearing controller health check`);
         clearInterval(controllerHealthCheck.current);
         controllerHealthCheck.current = null;
       }
@@ -132,9 +103,6 @@ export const useCrossTabSync = () => {
       currentState.loadingController !== tabId.current &&
       !currentState.isLoggedIn
     ) {
-      console.log(
-        `Tab ${tabId.current}: Found existing loading state on mount, syncing...`
-      );
       setIsLoading(true);
       setUsername(currentState.username);
       setLoadingProgress(currentState.loadingProgress);
@@ -150,9 +118,6 @@ export const useCrossTabSync = () => {
       !currentState.isLoggedIn &&
       currentState.username // There's a username being loaded
     ) {
-      console.log(
-        `Tab ${tabId.current}: Found stuck loading state on mount (no controller), completing login...`
-      );
       // Complete the login immediately since we're stuck
       setLoadingProgress(100);
       setTimeout(() => {
@@ -162,8 +127,6 @@ export const useCrossTabSync = () => {
       }, 500);
       return;
     }
-
-    console.log(`Tab ${tabId.current}: No stuck loading state found on mount`);
   }, [
     setIsLoading,
     setUsername,
@@ -232,34 +195,17 @@ export const useCrossTabSync = () => {
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      console.log(
-        `Tab ${tabId.current}: Storage event received`,
-        e.key,
-        e.newValue ? "has data" : "no data"
-      );
-
       // Check if the change is to our work-os-storage key
       if (e.key === "work-os-storage" && e.newValue) {
         try {
           const newState = JSON.parse(e.newValue);
           const newStateData = newState.state;
 
-          console.log(`Tab ${tabId.current}: Storage data:`, {
-            loading: newStateData?.isLoading,
-            controller: newStateData?.loadingController,
-            progress: newStateData?.loadingProgress,
-            currentlyLoading: currentIsLoading,
-            totalClicks: newStateData?.totalClicks,
-          });
-
           // Handle totalClicks sync (sync clicks across tabs)
           if (
             newStateData?.totalClicks !== undefined &&
             newStateData.totalClicks !== currentTotalClicks
           ) {
-            console.log(
-              `Tab ${tabId.current}: Syncing totalClicks from ${currentTotalClicks} to ${newStateData.totalClicks}`
-            );
             // Don't use incrementClicks or resetClicks as they would trigger more storage events
             // Instead, set the totalClicks directly via the store
             useWorkOSStore.setState({ totalClicks: newStateData.totalClicks });
@@ -280,24 +226,11 @@ export const useCrossTabSync = () => {
             currentIsLoading && // We're already in loading state
             newStateData?.username // There's a username being loaded
           ) {
-            console.log(
-              `Tab ${tabId.current}: Controller lost, waiting to see if it's permanent...`
-            );
             // Wait a bit to see if the controller really is gone
             // This prevents immediate completion when there are just temporary storage events
             setTimeout(() => {
               const latestState = useWorkOSStore.getState();
               const currentLoadingState = latestState.isLoading; // Get fresh loading state
-
-              console.log(
-                `Tab ${tabId.current}: Checking controller loss after delay:`,
-                {
-                  stillLoading: latestState.isLoading,
-                  hasController: !!latestState.loadingController,
-                  isLoggedIn: latestState.isLoggedIn,
-                  currentLoadingState,
-                }
-              );
 
               // Double-check that we still don't have a controller after the delay
               if (
@@ -306,18 +239,11 @@ export const useCrossTabSync = () => {
                 !latestState.isLoggedIn &&
                 currentLoadingState // Use fresh loading state instead of stale closure variable
               ) {
-                console.log(
-                  `Tab ${tabId.current}: Controller loss confirmed, completing login to avoid getting stuck...`
-                );
                 setLoadingProgress(100);
                 setTimeout(() => {
                   setIsLoggedIn(true);
                   setIsLoading(false);
                 }, 500); // Brief delay to show 100% completion
-              } else {
-                console.log(
-                  `Tab ${tabId.current}: Controller loss check failed - not completing login`
-                );
               }
             }, 1500); // Wait 1.5 seconds to confirm controller is really gone
           }
@@ -331,9 +257,6 @@ export const useCrossTabSync = () => {
             !currentlyLoggedIn &&
             !currentIsLoading // Only sync if we're NOT already loading
           ) {
-            console.log(
-              `Tab ${tabId.current}: Another tab started logging in, syncing loading state...`
-            );
             // Sync the loading state, username, and controller info
             setIsLoading(true);
             setUsername(newStateData.username);
@@ -351,9 +274,6 @@ export const useCrossTabSync = () => {
             !currentlyLoggedIn &&
             currentIsLoading // Only sync progress if we're already in loading state
           ) {
-            console.log(
-              `Tab ${tabId.current}: Syncing progress ${newStateData.loadingProgress}% from controller ${newStateData.loadingController}`
-            );
             // Only sync progress, don't interfere with the simulation
             setLoadingProgress(newStateData.loadingProgress);
             // Track that we saw a progress update (for controller health monitoring)
@@ -367,9 +287,6 @@ export const useCrossTabSync = () => {
             !newStateData?.isLoading &&
             !currentlyLoggedIn
           ) {
-            console.log(
-              "Another tab completed login, completing login here..."
-            );
             // Complete the login in this tab too
             setIsLoggedIn(true);
             setIsLoading(false);

@@ -85,26 +85,6 @@ export const useIdleWarning = () => {
 
   // Reset idle timer
   const resetIdleTimer = useCallback(() => {
-    // CRITICAL FIX: If we're at warning count 3 or higher, don't restart timers - force logout
-    if (
-      idleWarningCount >= 3 &&
-      !useWorkOSStore.getState().isLoggedOutFromIdle
-    ) {
-      console.log("WARNING COUNT >= 3 - FORCING IMMEDIATE LOGOUT");
-      setIsLoggedOutFromIdle(true);
-      setModalIsOpen(true);
-
-      // Broadcast logout to other tabs
-      localStorage.setItem(
-        "idle-logout",
-        JSON.stringify({
-          timestamp: Date.now(),
-          tabId: Math.random().toString(36).substr(2, 9),
-        })
-      );
-      return; // Don't restart any timers
-    }
-
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
     }
@@ -458,34 +438,31 @@ export const useIdleWarning = () => {
 
   // Handle modal dismissal - increment warning count if user was active and no progression happened
   const handleModalDismissal = useCallback(() => {
-    let newWarningCount = idleWarningCount;
+    console.log("Modal dismissed by user - Current state:", {
+      idleWarningCount,
+      isUserActive,
+      isIdleWarningActive
+    });
 
-    // Only increment if user was active (meaning they stopped a countdown but didn't trigger a new warning)
-    if (isUserActive) {
-      newWarningCount = idleWarningCount + 1;
-
-      // Check if we've reached the logout threshold
-      if (newWarningCount >= 3) {
-        console.log("Modal dismissal reached final warning - immediate logout");
-        setIsLoggedOutFromIdle(true);
-        setModalIsOpen(true);
-
-        // Broadcast logout to other tabs
-        localStorage.setItem(
-          "idle-logout",
-          JSON.stringify({
-            timestamp: Date.now(),
-            tabId: Math.random().toString(36).substr(2, 9),
-          })
-        );
-        return; // Don't continue with normal dismissal logic
-      }
-
-      setIdleWarningCount(newWarningCount);
+    // Stop any active countdown timer when user dismisses modal
+    if (countdownTimerRef.current) {
+      clearTimeout(countdownTimerRef.current);
+      countdownTimerRef.current = null;
     }
+    isCountingDownRef.current = false;
+
+    // Always increment warning count when user dismisses modal
+    const newWarningCount = idleWarningCount + 1;
+    setIdleWarningCount(newWarningCount);
+
+    console.log("Warning dismissed - advancing to level:", newWarningCount);
 
     // Reset user active state for next warning cycle
     setIsUserActive(false);
+
+    // Close modal and return to work app
+    setIsIdleWarningActive(false);
+    setModalIsOpen(false);
 
     // Broadcast modal dismissal to other tabs to keep them in sync
     localStorage.setItem(
@@ -497,14 +474,16 @@ export const useIdleWarning = () => {
       })
     );
 
-    // Restart idle timer now that modal is dismissed
+    // Always restart idle timer to continue monitoring
+    // The resetIdleTimer logic will handle what happens when count >= 3
     resetIdleTimer();
   }, [
-    isUserActive,
     idleWarningCount,
+    isUserActive,
+    isIdleWarningActive,
     setIdleWarningCount,
     setIsUserActive,
-    setIsLoggedOutFromIdle,
+    setIsIdleWarningActive,
     setModalIsOpen,
     resetIdleTimer,
   ]);
