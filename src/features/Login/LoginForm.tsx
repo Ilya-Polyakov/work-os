@@ -16,6 +16,7 @@ const LoginForm = ({ onSubmit }: LoginFormProps) => {
         width={80}
         height={80}
         className="hidden sm:block h-16 w-16 md:h-20 md:w-20"
+        priority
       />
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-center gap-1">
@@ -25,6 +26,7 @@ const LoginForm = ({ onSubmit }: LoginFormProps) => {
             width={32}
             height={32}
             className="sm:hidden h-8 w-8"
+            priority
           />
           <p>Type a user name and password to log on to WorkOS.</p>
         </div>

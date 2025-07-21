@@ -21,7 +21,13 @@ const Work = () => {
       <Window
         titleBarContent={
           <>
-            <Image src="/logo.png" alt="WorkOS Logo" width={14} height={14} />
+            <Image
+              src="/logo.png"
+              alt="WorkOS Logo"
+              width={14}
+              height={14}
+              priority
+            />
             Greetings {displayName}
           </>
         }

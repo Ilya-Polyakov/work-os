@@ -86,7 +86,13 @@ const Login = () => {
       <Window
         titleBarContent={
           <>
-            <Image src="/logo.png" alt="WorkOS Logo" width={14} height={14} />
+            <Image
+              src="/logo.png"
+              alt="WorkOS Logo"
+              width={14}
+              height={14}
+              priority
+            />
             Welcome to WorkOS
           </>
         }
