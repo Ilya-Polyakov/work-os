@@ -17,7 +17,7 @@ export const useIdleWarning = () => {
     setIdleCountdown,
     setIsLoggedOutFromIdle,
     setModalIsOpen,
-    resetStore,
+    setRequestingTabId,
   } = useWorkOSStore();
 
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -253,11 +253,7 @@ export const useIdleWarning = () => {
       }
 
       // Resume idle timer now that user is active - mouse movement will reset this
-      // But don't reset if we're at warning count >= 3
-      if (useWorkOSStore.getState().idleWarningCount < 3) {
-        console.log("Resuming idle timer in calm state");
-        resetIdleTimer();
-      }
+      resetIdleTimer();
       return;
     }
 
@@ -265,25 +261,19 @@ export const useIdleWarning = () => {
     // This allows continued mouse movement to reset the idle countdown
     // BUT don't reset if countdown is actively running to prevent flickering
     if (isIdleWarningActive && isUserActive && !isCountingDownRef.current) {
-      if (useWorkOSStore.getState().idleWarningCount < 3) {
-        resetIdleTimer(); // Reset the idle timer on continued activity
-      }
+      resetIdleTimer(); // Reset the idle timer on continued activity
       return;
     }
 
     // If user is active and modal was dismissed (warning not active), restart idle timer
     if (!isIdleWarningActive && isUserActive) {
-      if (useWorkOSStore.getState().idleWarningCount < 3) {
-        resetIdleTimer();
-      }
+      resetIdleTimer();
       return;
     }
 
     // Normal case: no warning active, restart idle timer for any activity
     if (!isIdleWarningActive) {
-      if (useWorkOSStore.getState().idleWarningCount < 3) {
-        resetIdleTimer();
-      }
+      resetIdleTimer();
     }
   }, [
     isLoggedIn,
@@ -349,17 +339,12 @@ export const useIdleWarning = () => {
               // CRITICAL FIX: Start idle timer for calm state in cross-tab sync
               // When one browser becomes active, all browsers should enter calm state
               // and start monitoring for idle behavior
-              if (useWorkOSStore.getState().idleWarningCount < 3) {
-                resetIdleTimer();
-              }
+              resetIdleTimer();
             }
 
             // CRITICAL FIX: Always reset idle timer when receiving cross-tab activity
             // This prevents tabs from triggering warnings when user is active in other tabs
-            if (
-              useWorkOSStore.getState().idleWarningCount < 3 &&
-              !isIdleWarningActive
-            ) {
+            if (!isIdleWarningActive) {
               resetIdleTimer();
             }
           }
@@ -388,6 +373,61 @@ export const useIdleWarning = () => {
             }
           }
           break;
+
+        case "idle-state-request":
+          if (e.newValue) {
+            const data = JSON.parse(e.newValue);
+            // Another tab is requesting current idle state - share our state
+            if (isIdleWarningActive || useWorkOSStore.getState().isLoggedOutFromIdle) {
+              localStorage.setItem('idle-state-response', JSON.stringify({
+                isIdleWarningActive: isIdleWarningActive,
+                isUserActive: isUserActive,
+                idleWarningCount: idleWarningCount,
+                isLoggedOutFromIdle: useWorkOSStore.getState().isLoggedOutFromIdle,
+                timestamp: Date.now(),
+                respondingTabId: Math.random().toString(36).substr(2, 9),
+                forRequestingTabId: data.requestingTabId,
+              }));
+            }
+          }
+          break;
+
+        case "idle-state-response":
+          if (e.newValue) {
+            const data = JSON.parse(e.newValue);
+            
+            // Only process responses if we are the tab that made the request
+            const currentRequestingTabId = useWorkOSStore.getState().requestingTabId;
+            if (currentRequestingTabId && data.forRequestingTabId === currentRequestingTabId) {
+              
+              // Check if other tab is logged out from idle
+              if (data.isLoggedOutFromIdle && !useWorkOSStore.getState().isLoggedOutFromIdle) {
+                setIsLoggedOutFromIdle(true);
+                setModalIsOpen(true);
+                setRequestingTabId(null);
+                return;
+              }
+              
+              // Only use the response if we don't have active idle warning state
+              if (!isIdleWarningActive && data.isIdleWarningActive) {
+                setIdleWarningCount(data.idleWarningCount);
+                setIsIdleWarningActive(true);
+                setIsUserActive(data.isUserActive);
+                setModalIsOpen(true);
+                
+                // Clear the requesting tab ID since we got our response
+                setRequestingTabId(null);
+                
+                // Restart appropriate timer based on user state
+                if (!data.isUserActive) {
+                  startCountdown();
+                } else {
+                  resetIdleTimer();
+                }
+              }
+            }
+          }
+          break;
       }
     };
 
@@ -397,13 +437,14 @@ export const useIdleWarning = () => {
     isLoggedIn,
     idleWarningCount,
     isIdleWarningActive,
+    isUserActive,
     setIdleWarningCount,
     setIsIdleWarningActive,
     setIsUserActive,
     setLastActivityTime,
     setModalIsOpen,
     setIsLoggedOutFromIdle,
-    resetStore,
+    setRequestingTabId,
     startCountdown,
     resetIdleTimer,
   ]);
@@ -418,7 +459,7 @@ export const useIdleWarning = () => {
       document.addEventListener(event, handleActivity, true);
     });
 
-    // Start idle timer
+    // Normal case: start idle timer (modal restoration handled separately)
     resetIdleTimer();
 
     // Cleanup
@@ -438,6 +479,40 @@ export const useIdleWarning = () => {
       }
     };
   }, [isLoggedIn, handleActivity, resetIdleTimer]);
+
+  // Separate effect to restore modal state after component is fully mounted
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    // Get fresh state from store in case of stale closure values
+    const currentState = useWorkOSStore.getState();
+
+    // Request current idle state from other tabs if we don't have an active warning or logged out state
+    if (!currentState.isIdleWarningActive && !currentState.isLoggedOutFromIdle) {
+      const requestingTabId = Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('idle-state-request', JSON.stringify({
+        timestamp: Date.now(),
+        requestingTabId: requestingTabId,
+      }));
+      
+      // Store the requesting tab ID to filter responses
+      setRequestingTabId(requestingTabId);
+    }
+
+    // Check if we should restore a modal state when component mounts - use fresh store state
+    if (currentState.isIdleWarningActive) {
+      // Always restore modal if warning is active in the store
+      setModalIsOpen(true);
+      
+      // If user is not active (still in warning state), restart countdown
+      if (!currentState.isUserActive) {
+        startCountdown();
+      } else if (currentState.isUserActive) {
+        // If user is active (calm state), start idle monitoring
+        resetIdleTimer();
+      }
+    }
+  }, [isLoggedIn, isIdleWarningActive, isUserActive, idleWarningCount, setModalIsOpen, setRequestingTabId, startCountdown, resetIdleTimer]);
 
   // Clean up timers when user logs out
   useEffect(() => {

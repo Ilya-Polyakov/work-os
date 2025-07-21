@@ -29,6 +29,7 @@ interface WorkOSStore {
   isUserActive: boolean; // true when user becomes active during warning
   lastActivityTime: number; // timestamp
   isLoggedOutFromIdle: boolean; // true when showing "logged out" modal
+  requestingTabId: string | null; // ID of tab that made idle state request
 
   setIdleWarningCount: (count: number) => void;
   setIdleCountdown: (countdown: number) => void;
@@ -37,6 +38,7 @@ interface WorkOSStore {
   setIsUserActive: (active: boolean) => void;
   setLastActivityTime: (time: number) => void;
   setIsLoggedOutFromIdle: (loggedOut: boolean) => void;
+  setRequestingTabId: (tabId: string | null) => void;
   resetIdleWarningSystem: () => void;
 
   resetStore: () => void;
@@ -79,6 +81,7 @@ const useWorkOSStore = create<WorkOSStore>()(
       isUserActive: false,
       lastActivityTime: Date.now(),
       isLoggedOutFromIdle: false,
+      requestingTabId: null,
 
       setIdleWarningCount: (count: number) => set({ idleWarningCount: count }),
       setIdleCountdown: (countdown: number) =>
@@ -97,6 +100,8 @@ const useWorkOSStore = create<WorkOSStore>()(
       setLastActivityTime: (time: number) => set({ lastActivityTime: time }),
       setIsLoggedOutFromIdle: (loggedOut: boolean) =>
         set({ isLoggedOutFromIdle: loggedOut }),
+      setRequestingTabId: (tabId: string | null) =>
+        set({ requestingTabId: tabId }),
 
       resetIdleWarningSystem: () =>
         set({
@@ -106,6 +111,7 @@ const useWorkOSStore = create<WorkOSStore>()(
           isUserActive: false,
           lastActivityTime: Date.now(),
           isLoggedOutFromIdle: false,
+          requestingTabId: null,
         }),
 
       resetStore: () => {
