@@ -30,6 +30,13 @@ export const useIdleWarning = () => {
       clearTimeout(countdownTimerRef.current);
     }
 
+    // CRITICAL FIX: Clear any existing idle timer when countdown starts
+    // This prevents the idle timer from firing during countdown and causing flickering
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+
     isCountingDownRef.current = true;
     setIdleCountdown(COUNTDOWN_DURATION);
 
@@ -89,12 +96,13 @@ export const useIdleWarning = () => {
       clearTimeout(idleTimerRef.current);
     }
 
-    // Don't start idle timer if ANY countdown is active or user is logged out
+    // Don't start idle timer if ANY countdown is active, user is logged out, OR modal is active
     // This prevents the 5-second idle timer from interfering with 10-second countdowns
     if (
       isLoggedIn &&
       !isCountingDownRef.current &&
-      !useWorkOSStore.getState().isLoggedOutFromIdle
+      !useWorkOSStore.getState().isLoggedOutFromIdle &&
+      !isIdleWarningActive
     ) {
       idleTimerRef.current = setTimeout(() => {
         // Check if this is the 4th idle period (after 3 warnings)
@@ -254,7 +262,8 @@ export const useIdleWarning = () => {
 
     // If warning is active and user is already active, reset idle timer
     // This allows continued mouse movement to reset the idle countdown
-    if (isIdleWarningActive && isUserActive) {
+    // BUT don't reset if countdown is actively running to prevent flickering
+    if (isIdleWarningActive && isUserActive && !isCountingDownRef.current) {
       if (useWorkOSStore.getState().idleWarningCount < 3) {
         resetIdleTimer(); // Reset the idle timer on continued activity
       }
@@ -441,7 +450,7 @@ export const useIdleWarning = () => {
     console.log("Modal dismissed by user - Current state:", {
       idleWarningCount,
       isUserActive,
-      isIdleWarningActive
+      isIdleWarningActive,
     });
 
     // Stop any active countdown timer when user dismisses modal
