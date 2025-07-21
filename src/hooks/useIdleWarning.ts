@@ -378,16 +378,23 @@ export const useIdleWarning = () => {
           if (e.newValue) {
             const data = JSON.parse(e.newValue);
             // Another tab is requesting current idle state - share our state
-            if (isIdleWarningActive || useWorkOSStore.getState().isLoggedOutFromIdle) {
-              localStorage.setItem('idle-state-response', JSON.stringify({
-                isIdleWarningActive: isIdleWarningActive,
-                isUserActive: isUserActive,
-                idleWarningCount: idleWarningCount,
-                isLoggedOutFromIdle: useWorkOSStore.getState().isLoggedOutFromIdle,
-                timestamp: Date.now(),
-                respondingTabId: Math.random().toString(36).substr(2, 9),
-                forRequestingTabId: data.requestingTabId,
-              }));
+            if (
+              isIdleWarningActive ||
+              useWorkOSStore.getState().isLoggedOutFromIdle
+            ) {
+              localStorage.setItem(
+                "idle-state-response",
+                JSON.stringify({
+                  isIdleWarningActive: isIdleWarningActive,
+                  isUserActive: isUserActive,
+                  idleWarningCount: idleWarningCount,
+                  isLoggedOutFromIdle:
+                    useWorkOSStore.getState().isLoggedOutFromIdle,
+                  timestamp: Date.now(),
+                  respondingTabId: Math.random().toString(36).substr(2, 9),
+                  forRequestingTabId: data.requestingTabId,
+                })
+              );
             }
           }
           break;
@@ -395,29 +402,35 @@ export const useIdleWarning = () => {
         case "idle-state-response":
           if (e.newValue) {
             const data = JSON.parse(e.newValue);
-            
+
             // Only process responses if we are the tab that made the request
-            const currentRequestingTabId = useWorkOSStore.getState().requestingTabId;
-            if (currentRequestingTabId && data.forRequestingTabId === currentRequestingTabId) {
-              
+            const currentRequestingTabId =
+              useWorkOSStore.getState().requestingTabId;
+            if (
+              currentRequestingTabId &&
+              data.forRequestingTabId === currentRequestingTabId
+            ) {
               // Check if other tab is logged out from idle
-              if (data.isLoggedOutFromIdle && !useWorkOSStore.getState().isLoggedOutFromIdle) {
+              if (
+                data.isLoggedOutFromIdle &&
+                !useWorkOSStore.getState().isLoggedOutFromIdle
+              ) {
                 setIsLoggedOutFromIdle(true);
                 setModalIsOpen(true);
                 setRequestingTabId(null);
                 return;
               }
-              
+
               // Only use the response if we don't have active idle warning state
               if (!isIdleWarningActive && data.isIdleWarningActive) {
                 setIdleWarningCount(data.idleWarningCount);
                 setIsIdleWarningActive(true);
                 setIsUserActive(data.isUserActive);
                 setModalIsOpen(true);
-                
+
                 // Clear the requesting tab ID since we got our response
                 setRequestingTabId(null);
-                
+
                 // Restart appropriate timer based on user state
                 if (!data.isUserActive) {
                   startCountdown();
@@ -488,13 +501,19 @@ export const useIdleWarning = () => {
     const currentState = useWorkOSStore.getState();
 
     // Request current idle state from other tabs if we don't have an active warning or logged out state
-    if (!currentState.isIdleWarningActive && !currentState.isLoggedOutFromIdle) {
+    if (
+      !currentState.isIdleWarningActive &&
+      !currentState.isLoggedOutFromIdle
+    ) {
       const requestingTabId = Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('idle-state-request', JSON.stringify({
-        timestamp: Date.now(),
-        requestingTabId: requestingTabId,
-      }));
-      
+      localStorage.setItem(
+        "idle-state-request",
+        JSON.stringify({
+          timestamp: Date.now(),
+          requestingTabId: requestingTabId,
+        })
+      );
+
       // Store the requesting tab ID to filter responses
       setRequestingTabId(requestingTabId);
     }
@@ -503,7 +522,7 @@ export const useIdleWarning = () => {
     if (currentState.isIdleWarningActive) {
       // Always restore modal if warning is active in the store
       setModalIsOpen(true);
-      
+
       // If user is not active (still in warning state), restart countdown
       if (!currentState.isUserActive) {
         startCountdown();
@@ -512,7 +531,16 @@ export const useIdleWarning = () => {
         resetIdleTimer();
       }
     }
-  }, [isLoggedIn, isIdleWarningActive, isUserActive, idleWarningCount, setModalIsOpen, setRequestingTabId, startCountdown, resetIdleTimer]);
+  }, [
+    isLoggedIn,
+    isIdleWarningActive,
+    isUserActive,
+    idleWarningCount,
+    setModalIsOpen,
+    setRequestingTabId,
+    startCountdown,
+    resetIdleTimer,
+  ]);
 
   // Clean up timers when user logs out
   useEffect(() => {
