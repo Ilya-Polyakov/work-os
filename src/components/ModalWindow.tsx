@@ -36,6 +36,16 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
   const handleClose = () => {
     console.log("Modal closing - user clicked continue");
 
+    // If this is a logout modal, handle differently
+    if (isLoggedOutFromIdle) {
+      console.log("Handling logout modal dismissal");
+      // Reset store and actually log the user out
+      const { resetStore } = useWorkOSStore.getState();
+      resetStore();
+      onClose();
+      return;
+    }
+
     // Handle modal dismissal logic (increment warning count if user was active)
     handleModalDismissal();
 
@@ -50,8 +60,9 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
   const getWarningContent = () => {
     if (isLoggedOutFromIdle) {
       return {
-        title: "Logged Out",
-        message: "You have been logged out due to inactivity.",
+        title: "Logged Out!",
+        message:
+          "You have been logged out due to inactivity. Report to your nearest supervisor for reprimanding.",
         showCountdown: false,
         showButton: true,
         buttonText: "OK",
@@ -89,12 +100,16 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
   };
 
   const content = getWarningContent();
-  const eyesState = isUserActive ? "calm" : "angry";
+  const eyesState = isLoggedOutFromIdle
+    ? "furious"
+    : isUserActive
+    ? "calm"
+    : "angry";
 
   return createPortal(
     <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
       <Window
-        onClose={onClose}
+        onClose={handleClose}
         titleBarContent={
           <>
             <Image
@@ -104,7 +119,7 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
               height={14}
               priority
             />
-            Get back to work!
+            {isLoggedOutFromIdle ? "Session Expired" : "Get back to work!"}
           </>
         }
         windowContent={
@@ -116,7 +131,7 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
                 width={128}
                 height={128}
               />
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center text-center gap-2">
                 <p>
                   <strong>{content.title}</strong>
                 </p>

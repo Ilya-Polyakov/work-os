@@ -42,9 +42,11 @@ export const useIdleWarning = () => {
         // Increment warning count when countdown completes
         setIdleWarningCount(idleWarningCount + 1);
 
+        // Show logout modal before resetting store
         setIsLoggedOutFromIdle(true);
-        resetStore();
+        setModalIsOpen(true);
 
+        // Broadcast logout to other tabs
         localStorage.setItem(
           "idle-logout",
           JSON.stringify({
@@ -52,6 +54,9 @@ export const useIdleWarning = () => {
             tabId: Math.random().toString(36).substr(2, 9),
           })
         );
+
+        // Don't immediately reset store - let the modal show first
+        // Store will be reset when user clicks OK on logout modal
         return;
       }
 
@@ -73,7 +78,7 @@ export const useIdleWarning = () => {
   }, [
     setIdleCountdown,
     setIsLoggedOutFromIdle,
-    resetStore,
+    setModalIsOpen,
     idleWarningCount,
     setIdleWarningCount,
   ]);
@@ -92,7 +97,15 @@ export const useIdleWarning = () => {
           console.log("Final warning exceeded - immediate logout");
           setIsLoggedOutFromIdle(true);
           setModalIsOpen(true);
-          resetStore();
+
+          // Broadcast logout to other tabs
+          localStorage.setItem(
+            "idle-logout",
+            JSON.stringify({
+              timestamp: Date.now(),
+              tabId: Math.random().toString(36).substr(2, 9),
+            })
+          );
           return;
         }
 
@@ -102,9 +115,18 @@ export const useIdleWarning = () => {
 
           // If this would be the 4th warning, log out immediately
           if (nextWarningCount >= 3) {
+            console.log("Would be 4th warning - immediate logout instead");
             setIsLoggedOutFromIdle(true);
             setModalIsOpen(true);
-            resetStore();
+
+            // Broadcast logout to other tabs
+            localStorage.setItem(
+              "idle-logout",
+              JSON.stringify({
+                timestamp: Date.now(),
+                tabId: Math.random().toString(36).substr(2, 9),
+              })
+            );
             return;
           }
 
@@ -136,7 +158,6 @@ export const useIdleWarning = () => {
     idleWarningCount,
     setIsLoggedOutFromIdle,
     setModalIsOpen,
-    resetStore,
     setIsIdleWarningActive,
     setIdleWarningCount,
     setIsUserActive,
@@ -243,7 +264,8 @@ export const useIdleWarning = () => {
         case "idle-logout":
           if (e.newValue) {
             setIsLoggedOutFromIdle(true);
-            resetStore();
+            setModalIsOpen(true);
+            // Don't immediately reset store - let logout modal show first
           }
           break;
       }
