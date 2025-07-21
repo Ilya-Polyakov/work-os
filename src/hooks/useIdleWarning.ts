@@ -26,8 +26,10 @@ export const useIdleWarning = () => {
 
   // Start countdown timer
   const startCountdown = useCallback(() => {
+    // Clear any existing countdown timer
     if (countdownTimerRef.current) {
       clearTimeout(countdownTimerRef.current);
+      countdownTimerRef.current = null;
     }
 
     // CRITICAL FIX: Clear any existing idle timer when countdown starts
@@ -40,14 +42,20 @@ export const useIdleWarning = () => {
     isCountingDownRef.current = true;
     setIdleCountdown(COUNTDOWN_DURATION);
 
-    // Create countdown function that doesn't depend on closure
+    // Create countdown function that checks isCountingDownRef before proceeding
     const runCountdown = (currentCount: number) => {
+      // CRITICAL FIX: Check if countdown was cancelled before proceeding
+      if (!isCountingDownRef.current) {
+        return;
+      }
+
       if (currentCount <= 0) {
         console.log("Countdown finished - logging out");
         isCountingDownRef.current = false;
 
-        // Increment warning count when countdown completes
-        setIdleWarningCount(idleWarningCount + 1);
+        // Get fresh warning count from store to avoid stale closure values
+        const currentWarningCount = useWorkOSStore.getState().idleWarningCount;
+        setIdleWarningCount(currentWarningCount + 1);
 
         // Show logout modal before resetting store
         setIsLoggedOutFromIdle(true);
@@ -70,7 +78,7 @@ export const useIdleWarning = () => {
       // Update countdown in store
       setIdleCountdown(currentCount);
 
-      // Schedule next tick if still counting
+      // Schedule next tick only if still counting
       if (isCountingDownRef.current) {
         countdownTimerRef.current = setTimeout(() => {
           runCountdown(currentCount - 1);
@@ -78,15 +86,14 @@ export const useIdleWarning = () => {
       }
     };
 
-    // Start countdown
-    setTimeout(() => {
+    // Start countdown with first tick after 1 second
+    countdownTimerRef.current = setTimeout(() => {
       runCountdown(COUNTDOWN_DURATION - 1);
     }, 1000);
   }, [
     setIdleCountdown,
     setIsLoggedOutFromIdle,
     setModalIsOpen,
-    idleWarningCount,
     setIdleWarningCount,
   ]);
 
