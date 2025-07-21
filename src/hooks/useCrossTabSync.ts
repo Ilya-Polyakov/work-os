@@ -16,6 +16,7 @@ export const useCrossTabSync = () => {
     username: currentUsername,
     loadingController,
     isLoading: currentIsLoading,
+    totalClicks: currentTotalClicks,
   } = useWorkOSStore();
 
   // Generate a unique tab ID with timestamp for priority ordering
@@ -305,7 +306,21 @@ export const useCrossTabSync = () => {
             controller: newStateData?.loadingController,
             progress: newStateData?.loadingProgress,
             currentlyLoading: currentIsLoading,
+            totalClicks: newStateData?.totalClicks,
           });
+
+          // Handle totalClicks sync (sync clicks across tabs)
+          if (
+            newStateData?.totalClicks !== undefined &&
+            newStateData.totalClicks !== currentTotalClicks
+          ) {
+            console.log(
+              `Tab ${tabId.current}: Syncing totalClicks from ${currentTotalClicks} to ${newStateData.totalClicks}`
+            );
+            // Don't use incrementClicks or resetClicks as they would trigger more storage events
+            // Instead, set the totalClicks directly via the store
+            useWorkOSStore.setState({ totalClicks: newStateData.totalClicks });
+          }
 
           // Handle logout (another tab logged out)
           if (!newStateData?.username && currentlyLoggedIn) {
@@ -432,6 +447,7 @@ export const useCrossTabSync = () => {
     currentlyLoggedIn,
     currentUsername,
     currentIsLoading,
+    currentTotalClicks,
     setIsLoggedIn,
     setUsername,
     setIsLoading,
