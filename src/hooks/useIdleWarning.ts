@@ -96,13 +96,14 @@ export const useIdleWarning = () => {
       clearTimeout(idleTimerRef.current);
     }
 
-    // Don't start idle timer if ANY countdown is active, user is logged out, OR modal is active
-    // This prevents the 5-second idle timer from interfering with 10-second countdowns
+    // Don't start idle timer if warning countdown is active or user is logged out
+    // This prevents the main idle timer from interfering with 10-second countdowns
+    // BUT allows idle timer when user is inactive during warning state after becoming active
     if (
       isLoggedIn &&
       !isCountingDownRef.current &&
       !useWorkOSStore.getState().isLoggedOutFromIdle &&
-      !isIdleWarningActive
+      (!isIdleWarningActive || useWorkOSStore.getState().isUserActive)
     ) {
       idleTimerRef.current = setTimeout(() => {
         // Check if this is the 4th idle period (after 3 warnings)
