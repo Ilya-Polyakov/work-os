@@ -230,63 +230,6 @@ export const useCrossTabSync = () => {
     [setLoadingProgress, setLoadingController, loadingController]
   );
 
-  // Function to continue loading from a specific progress point (for controller failover)
-  const simulateLoadingFromProgress = useCallback(
-    (
-      startProgress: number,
-      remainingDuration: number,
-      onComplete: () => void
-    ) => {
-      let currentProgress = startProgress;
-      const startTime = Date.now();
-
-      const updateProgress = () => {
-        // Check if we're still the controller
-        const currentState = useWorkOSStore.getState();
-        if (currentState.loadingController !== tabId.current) {
-          return; // Stop if we're no longer the controller
-        }
-
-        const elapsedTime = Date.now() - startTime;
-
-        if (elapsedTime >= remainingDuration) {
-          // Loading complete
-          setLoadingProgress(100);
-          setTimeout(() => {
-            onComplete();
-          }, 1000);
-          return;
-        }
-
-        // Calculate random increment
-        const randomIncrement = Math.random() * 7 + 1;
-        const timeBasedProgress =
-          startProgress +
-          (elapsedTime / remainingDuration) * (100 - startProgress);
-        const newProgress = Math.min(
-          currentProgress + randomIncrement,
-          timeBasedProgress,
-          95
-        );
-
-        currentProgress = newProgress;
-        setLoadingProgress(Math.floor(currentProgress));
-
-        // Schedule next update with random delay
-        const randomDelay = Math.random() * 700 + 100;
-        setTimeout(updateProgress, randomDelay);
-      };
-
-      updateProgress();
-    },
-    [setLoadingProgress]
-  );
-
-  // DISABLED: Failover mechanism - now handled via storage events
-  useEffect(() => {
-    console.log(`Tab ${tabId.current}: Failover handled via storage events`);
-  }, []);
-
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       console.log(
@@ -453,7 +396,6 @@ export const useCrossTabSync = () => {
     setIsLoading,
     setLoadingProgress,
     setLoadingController,
-    simulateLoadingFromProgress,
   ]);
 
   // Only clear controller on actual tab close, not on tab switch/minimize
