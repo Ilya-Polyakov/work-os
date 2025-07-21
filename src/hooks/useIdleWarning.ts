@@ -89,7 +89,7 @@ export const useIdleWarning = () => {
       idleTimerRef.current = setTimeout(() => {
         // Check if this is the 4th idle period (after 3 warnings)
         if (idleWarningCount >= 3) {
-          console.log("4th warning - immediate logout");
+          console.log("Final warning exceeded - immediate logout");
           setIsLoggedOutFromIdle(true);
           setModalIsOpen(true);
           resetStore();
@@ -98,7 +98,17 @@ export const useIdleWarning = () => {
 
         if (isIdleWarningActive) {
           // User became idle again while modal is open - advance to next warning
-          setIdleWarningCount(idleWarningCount + 1);
+          const nextWarningCount = idleWarningCount + 1;
+
+          // If this would be the 4th warning, log out immediately
+          if (nextWarningCount >= 3) {
+            setIsLoggedOutFromIdle(true);
+            setModalIsOpen(true);
+            resetStore();
+            return;
+          }
+
+          setIdleWarningCount(nextWarningCount);
           setIsUserActive(false);
           startCountdown();
         } else {
@@ -157,6 +167,9 @@ export const useIdleWarning = () => {
         idleTimerRef.current = null;
       }
 
+      // Resume idle timer now that user is active - mouse movement will reset this
+      resetIdleTimer();
+
       // DON'T restart idle timer here - wait for modal to be dismissed
       // This prevents triggering next warning while user is still interacting with current modal
 
@@ -171,9 +184,10 @@ export const useIdleWarning = () => {
       return;
     }
 
-    // If warning is active and user is already active, don't restart idle timer
-    // This prevents advancing warning levels while user continues to move mouse
+    // If warning is active and user is already active, reset idle timer
+    // This allows continued mouse movement to reset the idle countdown
     if (isIdleWarningActive && isUserActive) {
+      resetIdleTimer(); // Reset the idle timer on continued activity
       return;
     }
 
