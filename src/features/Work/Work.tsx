@@ -17,7 +17,7 @@ const Work = () => {
   useCrossTabSync();
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4">
+    <div className="flex items-center justify-center min-h-screen px-4 py-24">
       <Window
         titleBarContent={
           <>
@@ -30,10 +30,11 @@ const Work = () => {
             <div className="flex flex-col gap-2 mb-2 pb-2 border-b">
               <p>Today is like any other day. We need you to push buttons.</p>
               <p>For every 12 button presses you will earn 1 credit.</p>
+              <p>Do NOT be idle.</p>
 
-              <div className="p-6 flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-2">
                 <button onClick={incrementClicks}>
-                  Button Pressed {totalClicks} times
+                  Push this Button ({totalClicks})
                 </button>
                 <p className="text-center">
                   <strong>Credits: {Math.floor(totalClicks / 12)}</strong>
