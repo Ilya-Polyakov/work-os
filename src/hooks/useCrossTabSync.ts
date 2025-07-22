@@ -352,7 +352,8 @@ export const useCrossTabSync = () => {
             newStateData?.isLoading &&
             newStateData?.loadingController &&
             newStateData.loadingController !== tabId.current &&
-            !currentIsLoading // Only sync if we're NOT already loading
+            !currentIsLoading && // Only sync if we're NOT already loading
+            !shouldIgnoreLogin // Don't auto-login if recent logout detected
           ) {
             console.log(
               `Tab ${tabId.current}: Syncing loading state from controller ${newStateData.loadingController} (via storage event)`
