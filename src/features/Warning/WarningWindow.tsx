@@ -113,6 +113,7 @@ const WarningWindow = ({ isOpen, onClose }: WarningWindowProps) => {
                 alt={`${eyesState} Eyes`}
                 width={128}
                 height={128}
+                priority
               />
               <div className="flex flex-col items-center text-center gap-2">
                 <p>
