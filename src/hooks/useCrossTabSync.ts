@@ -59,18 +59,30 @@ export const useCrossTabSync = () => {
           currentState.username &&
           currentState.username.trim() !== "" // Make sure it's not empty (logout state)
         ) {
-          // Clear the health check
-          if (controllerHealthCheck.current) {
-            clearInterval(controllerHealthCheck.current);
-            controllerHealthCheck.current = null;
+          // Check if the controller tab is still present in localStorage
+          const storageRaw = localStorage.getItem("work-os-storage");
+          let controllerStillSet = false;
+          if (storageRaw) {
+            try {
+              const storageState = JSON.parse(storageRaw);
+              controllerStillSet =
+                storageState.state.loadingController &&
+                storageState.state.loadingController !== tabId.current;
+            } catch {}
           }
 
-          // Complete the login
-          setLoadingProgress(100);
-          setTimeout(() => {
-            setIsLoggedIn(true);
-            setIsLoading(false);
-          }, 500);
+          // If controller is missing or no progress update, auto-complete
+          if (!controllerStillSet || timeSinceLastUpdate > 6000) {
+            if (controllerHealthCheck.current) {
+              clearInterval(controllerHealthCheck.current);
+              controllerHealthCheck.current = null;
+            }
+            setLoadingProgress(100);
+            setTimeout(() => {
+              setIsLoggedIn(true);
+              setIsLoading(false);
+            }, 500);
+          }
         }
       }, 3000); // Check every 3 seconds
     } else {
@@ -114,19 +126,19 @@ export const useCrossTabSync = () => {
       setLoadingProgress(currentState.loadingProgress);
       setLoadingController(currentState.loadingController); // CRITICAL: Sync controller on mount too!
       lastProgressUpdate.current = Date.now();
-      return; // Don't run safety checks if we're syncing
+      return; // Don't run safety checks if we're syncing\
     }
 
     // CRITICAL: Handle stuck loading state (loading=true but no controller)
     // BUT: Don't auto-complete if username is empty (indicates logout)
     if (
       currentState.isLoading &&
-      !currentState.loadingController && // No controller
+      !currentState.loadingController && // Controller is gone
       !currentState.isLoggedIn &&
-      currentState.username && // There's a username being loaded
-      currentState.username.trim() !== "" // Make sure it's not empty
+      currentState.username &&
+      currentState.username.trim() !== ""
     ) {
-      // Complete the login immediately since we're stuck
+      // Controller is gone, auto-complete loading in this tab
       setLoadingProgress(100);
       setTimeout(() => {
         setIsLoggedIn(true);
@@ -219,6 +231,31 @@ export const useCrossTabSync = () => {
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "work-os-storage" && e.newValue) {
+        try {
+          const newState = JSON.parse(e.newValue);
+          const newStateData = newState.state;
+
+          // If controller is gone and we're still loading, auto-complete
+          if (
+            newStateData?.isLoading &&
+            !newStateData?.loadingController &&
+            !currentlyLoggedIn &&
+            currentIsLoading &&
+            newStateData?.username &&
+            newStateData.username.trim() !== ""
+          ) {
+            setLoadingProgress(100);
+            setTimeout(() => {
+              setIsLoggedIn(true);
+              setIsLoading(false);
+              setUsername(newStateData.username);
+            }, 500);
+            return;
+          }
+        } catch {}
+      }
+
       // Handle explicit user logout broadcast - this takes PRIORITY over everything else
       if (e.key === "user-logout" && e.newValue) {
         setIsLoggedIn(false);
@@ -438,6 +475,15 @@ export const useCrossTabSync = () => {
           `Tab ${tabId.current}: Page unloading, clearing controller`
         );
         setLoadingController(null);
+        localStorage.setItem(
+          "work-os-storage",
+          JSON.stringify({
+            state: {
+              ...currentState,
+              loadingController: null,
+            },
+          })
+        );
         // Don't prevent the unload, just clear the controller
       }
     };
