@@ -34,6 +34,17 @@ export const useStorageSync = (tabId: string) => {
         return;
       }
 
+      let lastProgressUpdate = 0;
+
+      function setThrottledLoadingProgress(progress: number) {
+        const now = Date.now();
+        if (now - lastProgressUpdate > 400) {
+          // 400ms throttle
+          useWorkOSStore.getState().setLoadingProgress(progress);
+          lastProgressUpdate = now;
+        }
+      }
+
       if (e.key === "work-os-storage" && e.newValue) {
         try {
           const { state } = JSON.parse(e.newValue);
@@ -67,7 +78,7 @@ export const useStorageSync = (tabId: string) => {
           ) {
             setIsLoading(true);
             setUsername(state.username);
-            setLoadingProgress(state.loadingProgress);
+            setThrottledLoadingProgress(state.loadingProgress);
             setLoadingController(state.loadingController);
           }
 
@@ -79,7 +90,7 @@ export const useStorageSync = (tabId: string) => {
             typeof state.loadingProgress === "number" &&
             currentState.isLoading
           ) {
-            setLoadingProgress(state.loadingProgress);
+            setThrottledLoadingProgress(state.loadingProgress);
           }
 
           // Complete login if another tab finished logging in
@@ -102,7 +113,7 @@ export const useStorageSync = (tabId: string) => {
             currentState.isLoading &&
             state.username
           ) {
-            setLoadingProgress(100);
+            setThrottledLoadingProgress(100);
             setTimeout(() => {
               setIsLoggedIn(true);
               setIsLoading(false);
