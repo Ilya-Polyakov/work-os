@@ -25,42 +25,25 @@ export const useIdleWarning = () => {
 
   // Start countdown timer
   const startCountdown = useCallback(() => {
-    // Clear any existing countdown timer
     if (countdownTimerRef.current) {
       clearTimeout(countdownTimerRef.current);
       countdownTimerRef.current = null;
     }
-
-    // CRITICAL FIX: Clear any existing idle timer when countdown starts
-    // This prevents the idle timer from firing during countdown and causing flickering
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
       idleTimerRef.current = null;
     }
-
     isCountingDownRef.current = true;
     setIdleCountdown(COUNTDOWN_DURATION);
 
-    // Create countdown function that checks isCountingDownRef before proceeding
     const runCountdown = (currentCount: number) => {
-      // CRITICAL FIX: Check if countdown was cancelled before proceeding
-      if (!isCountingDownRef.current) {
-        return;
-      }
-
+      if (!isCountingDownRef.current) return;
       if (currentCount <= 0) {
-        console.log("Countdown finished - logging out");
         isCountingDownRef.current = false;
-
-        // Get fresh warning count from store to avoid stale closure values
         const currentWarningCount = useWorkOSStore.getState().idleWarningCount;
         setIdleWarningCount(currentWarningCount + 1);
-
-        // Show logout modal before resetting store
         setIsLoggedOutFromIdle(true);
         setModalIsOpen(true);
-
-        // Broadcast logout to other tabs
         localStorage.setItem(
           "idle-logout",
           JSON.stringify({
@@ -68,24 +51,15 @@ export const useIdleWarning = () => {
             tabId: Math.random().toString(36).substr(2, 9),
           })
         );
-
-        // Don't immediately reset store - let the modal show first
-        // Store will be reset when user clicks OK on logout modal
         return;
       }
-
-      // Update countdown in store
       setIdleCountdown(currentCount);
-
-      // Schedule next tick only if still counting
       if (isCountingDownRef.current) {
         countdownTimerRef.current = setTimeout(() => {
           runCountdown(currentCount - 1);
         }, 1000);
       }
     };
-
-    // Start countdown with first tick after 1 second
     countdownTimerRef.current = setTimeout(() => {
       runCountdown(COUNTDOWN_DURATION - 1);
     }, 1000);
@@ -101,10 +75,6 @@ export const useIdleWarning = () => {
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
     }
-
-    // Don't start idle timer if warning countdown is active or user is logged out
-    // This prevents the main idle timer from interfering with 10-second countdowns
-    // BUT allows idle timer when user is inactive during warning state after becoming active
     if (
       isLoggedIn &&
       !isCountingDownRef.current &&
@@ -112,13 +82,9 @@ export const useIdleWarning = () => {
       (!isIdleWarningActive || useWorkOSStore.getState().isUserActive)
     ) {
       idleTimerRef.current = setTimeout(() => {
-        // Check if this is the 4th idle period (after 3 warnings)
         if (idleWarningCount >= 3) {
-          console.log("Final warning exceeded - immediate logout");
           setIsLoggedOutFromIdle(true);
           setModalIsOpen(true);
-
-          // Broadcast logout to other tabs
           localStorage.setItem(
             "idle-logout",
             JSON.stringify({
@@ -128,30 +94,13 @@ export const useIdleWarning = () => {
           );
           return;
         }
-
         if (isIdleWarningActive) {
-          // User became idle again while modal is open
-          console.log("User became idle again while modal is open", {
-            isUserActive: useWorkOSStore.getState().isUserActive,
-            idleWarningCount,
-            currentTime: Date.now(),
-          });
-
-          // Get the current user active state from the store to avoid stale closure values
           const currentIsUserActive = useWorkOSStore.getState().isUserActive;
-
-          // If user was in calm state (active), advance to next warning
           if (currentIsUserActive) {
-            console.log("User was in calm state - advancing to next warning");
             const nextWarningCount = idleWarningCount + 1;
-
-            // If this would be the 4th warning, log out immediately
             if (nextWarningCount >= 3) {
-              console.log("Would be 4th warning - immediate logout instead");
               setIsLoggedOutFromIdle(true);
               setModalIsOpen(true);
-
-              // Broadcast logout to other tabs
               localStorage.setItem(
                 "idle-logout",
                 JSON.stringify({
@@ -161,12 +110,9 @@ export const useIdleWarning = () => {
               );
               return;
             }
-
             setIdleWarningCount(nextWarningCount);
             setIsUserActive(false);
             startCountdown();
-
-            // Broadcast warning advancement to other tabs
             localStorage.setItem(
               "idle-warning-triggered",
               JSON.stringify({
@@ -176,25 +122,18 @@ export const useIdleWarning = () => {
               })
             );
           } else {
-            // User was already idle, just restart countdown at same warning level
-            console.log(
-              "User was already idle - restarting countdown at same level"
-            );
             setIsUserActive(false);
             startCountdown();
           }
         } else {
-          // First idle timeout - show initial warning modal
           setIsIdleWarningActive(true);
           setIsUserActive(false);
           setModalIsOpen(true);
           startCountdown();
-
-          // Broadcast initial warning to other tabs - use current warning count
           localStorage.setItem(
             "idle-warning-triggered",
             JSON.stringify({
-              warningCount: idleWarningCount, // Use current count, not hardcoded 0
+              warningCount: idleWarningCount,
               timestamp: Date.now(),
               tabId: Math.random().toString(36).substr(2, 9),
             })
@@ -217,17 +156,9 @@ export const useIdleWarning = () => {
   // Activity detection
   const handleActivity = useCallback(() => {
     if (!isLoggedIn) return;
-
-    // Don't process activity if already logged out
-    if (useWorkOSStore.getState().isLoggedOutFromIdle) {
-      return;
-    }
-
+    if (useWorkOSStore.getState().isLoggedOutFromIdle) return;
     const now = Date.now();
     setLastActivityTime(now);
-
-    // CRITICAL FIX: Always broadcast activity to other tabs to keep idle timers in sync
-    // This prevents other tabs from triggering warnings when user is active in this tab
     localStorage.setItem(
       "idle-activity-detected",
       JSON.stringify({
@@ -235,49 +166,28 @@ export const useIdleWarning = () => {
         tabId: Math.random().toString(36).substr(2, 9),
       })
     );
-
-    // If warning is active and user becomes active for the first time
     if (isIdleWarningActive && !isUserActive) {
-      console.log("User became active during warning - entering calm state", {
-        idleWarningCount,
-        isIdleWarningActive,
-        isUserActive,
-      });
       setIsUserActive(true);
-
-      // Stop countdown timer when user becomes active
       if (countdownTimerRef.current) {
         clearTimeout(countdownTimerRef.current);
         countdownTimerRef.current = null;
       }
       isCountingDownRef.current = false;
-
-      // IMPORTANT: Clear any existing idle timer to prevent false next warning triggers
       if (idleTimerRef.current) {
         clearTimeout(idleTimerRef.current);
         idleTimerRef.current = null;
       }
-
-      // Resume idle timer now that user is active - mouse movement will reset this
       resetIdleTimer();
       return;
     }
-
-    // If warning is active and user is already active, reset idle timer
-    // This allows continued mouse movement to reset the idle countdown
-    // BUT don't reset if countdown is actively running to prevent flickering
     if (isIdleWarningActive && isUserActive && !isCountingDownRef.current) {
-      resetIdleTimer(); // Reset the idle timer on continued activity
+      resetIdleTimer();
       return;
     }
-
-    // If user is active and modal was dismissed (warning not active), restart idle timer
     if (!isIdleWarningActive && isUserActive) {
       resetIdleTimer();
       return;
     }
-
-    // Normal case: no warning active, restart idle timer for any activity
     if (!isIdleWarningActive) {
       resetIdleTimer();
     }
@@ -285,7 +195,6 @@ export const useIdleWarning = () => {
     isLoggedIn,
     isIdleWarningActive,
     isUserActive,
-    idleWarningCount,
     setLastActivityTime,
     setIsUserActive,
     resetIdleTimer,
@@ -295,20 +204,10 @@ export const useIdleWarning = () => {
   useEffect(() => {
     const handleStorageEvent = (e: StorageEvent) => {
       if (!isLoggedIn) return;
-
       switch (e.key) {
         case "idle-warning-triggered":
           if (e.newValue) {
             const data = JSON.parse(e.newValue);
-            console.log(
-              "Received idle-warning-triggered:",
-              data,
-              "Current count:",
-              idleWarningCount
-            );
-
-            // CRITICAL FIX: Only sync if the broadcast warning count is HIGHER than current
-            // This prevents tabs from downgrading each other's warning levels
             if (data.warningCount > idleWarningCount) {
               setIdleWarningCount(data.warningCount);
               setIsIdleWarningActive(true);
@@ -319,7 +218,6 @@ export const useIdleWarning = () => {
               data.warningCount === idleWarningCount &&
               !isIdleWarningActive
             ) {
-              // If same warning level but we're not active, sync the modal state
               setIsIdleWarningActive(true);
               setIsUserActive(false);
               setModalIsOpen(true);
@@ -327,13 +225,10 @@ export const useIdleWarning = () => {
             }
           }
           break;
-
         case "idle-activity-detected":
           if (e.newValue) {
             const data = JSON.parse(e.newValue);
             setLastActivityTime(data.timestamp);
-
-            // If warning is active, handle warning-specific activity
             if (isIdleWarningActive) {
               setIsUserActive(true);
               if (countdownTimerRef.current) {
@@ -341,49 +236,33 @@ export const useIdleWarning = () => {
                 countdownTimerRef.current = null;
               }
               isCountingDownRef.current = false;
-
-              // CRITICAL FIX: Start idle timer for calm state in cross-tab sync
-              // When one browser becomes active, all browsers should enter calm state
-              // and start monitoring for idle behavior
               resetIdleTimer();
             }
-
-            // CRITICAL FIX: Always reset idle timer when receiving cross-tab activity
-            // This prevents tabs from triggering warnings when user is active in other tabs
             if (!isIdleWarningActive) {
               resetIdleTimer();
             }
           }
           break;
-
         case "idle-logout":
           if (e.newValue) {
             setIsLoggedOutFromIdle(true);
             setModalIsOpen(true);
-            // Don't immediately reset store - let logout modal show first
           }
           break;
-
         case "idle-modal-dismissed":
           if (e.newValue && isIdleWarningActive) {
             const data = JSON.parse(e.newValue);
-
-            // Only sync if the broadcast warning count is HIGHER OR EQUAL
-            // This prevents tabs from being downgraded by other tab dismissals
             if (data.warningCount >= idleWarningCount) {
               setIdleWarningCount(data.warningCount);
               setIsIdleWarningActive(false);
               setIsUserActive(false);
               setModalIsOpen(false);
-              // Don't restart idle timers to avoid countdown interference
             }
           }
           break;
-
         case "idle-state-request":
           if (e.newValue) {
             const data = JSON.parse(e.newValue);
-            // Another tab is requesting current idle state - share our state
             if (
               isIdleWarningActive ||
               useWorkOSStore.getState().isLoggedOutFromIdle
@@ -404,19 +283,15 @@ export const useIdleWarning = () => {
             }
           }
           break;
-
         case "idle-state-response":
           if (e.newValue) {
             const data = JSON.parse(e.newValue);
-
-            // Only process responses if we are the tab that made the request
             const currentRequestingTabId =
               useWorkOSStore.getState().requestingTabId;
             if (
               currentRequestingTabId &&
               data.forRequestingTabId === currentRequestingTabId
             ) {
-              // Check if other tab is logged out from idle
               if (
                 data.isLoggedOutFromIdle &&
                 !useWorkOSStore.getState().isLoggedOutFromIdle
@@ -426,18 +301,12 @@ export const useIdleWarning = () => {
                 setRequestingTabId(null);
                 return;
               }
-
-              // Only use the response if we don't have active idle warning state
               if (!isIdleWarningActive && data.isIdleWarningActive) {
                 setIdleWarningCount(data.idleWarningCount);
                 setIsIdleWarningActive(true);
                 setIsUserActive(data.isUserActive);
                 setModalIsOpen(true);
-
-                // Clear the requesting tab ID since we got our response
                 setRequestingTabId(null);
-
-                // Restart appropriate timer based on user state
                 if (!data.isUserActive) {
                   startCountdown();
                 } else {
@@ -449,7 +318,6 @@ export const useIdleWarning = () => {
           break;
       }
     };
-
     window.addEventListener("storage", handleStorageEvent);
     return () => window.removeEventListener("storage", handleStorageEvent);
   }, [
@@ -468,45 +336,31 @@ export const useIdleWarning = () => {
     resetIdleTimer,
   ]);
 
-  // Set up activity listeners
   useEffect(() => {
     if (!isLoggedIn) return;
-
     const events = ["keydown", "click", "mousemove"];
-
     events.forEach((event) => {
       document.addEventListener(event, handleActivity, true);
     });
-
-    // Normal case: start idle timer (modal restoration handled separately)
     resetIdleTimer();
-
-    // Cleanup
     return () => {
       events.forEach((event) => {
         document.removeEventListener(event, handleActivity, true);
       });
-
-      const idleTimer = idleTimerRef.current;
-      const countdownTimer = countdownTimerRef.current;
-
-      if (idleTimer) {
-        clearTimeout(idleTimer);
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
       }
-      if (countdownTimer) {
-        clearInterval(countdownTimer);
+      if (countdownTimerRef.current) {
+        clearTimeout(countdownTimerRef.current);
+        countdownTimerRef.current = null;
       }
     };
   }, [isLoggedIn, handleActivity, resetIdleTimer]);
 
-  // Separate effect to restore modal state after component is fully mounted
   useEffect(() => {
     if (!isLoggedIn) return;
-
-    // Get fresh state from store in case of stale closure values
     const currentState = useWorkOSStore.getState();
-
-    // Request current idle state from other tabs if we don't have an active warning or logged out state
     if (
       !currentState.isIdleWarningActive &&
       !currentState.isLoggedOutFromIdle
@@ -519,21 +373,13 @@ export const useIdleWarning = () => {
           requestingTabId: requestingTabId,
         })
       );
-
-      // Store the requesting tab ID to filter responses
       setRequestingTabId(requestingTabId);
     }
-
-    // Check if we should restore a modal state when component mounts - use fresh store state
     if (currentState.isIdleWarningActive) {
-      // Always restore modal if warning is active in the store
       setModalIsOpen(true);
-
-      // If user is not active (still in warning state), restart countdown
       if (!currentState.isUserActive) {
         startCountdown();
       } else if (currentState.isUserActive) {
-        // If user is active (calm state), start idle monitoring
         resetIdleTimer();
       }
     }
@@ -548,7 +394,6 @@ export const useIdleWarning = () => {
     resetIdleTimer,
   ]);
 
-  // Clean up timers when user logs out
   useEffect(() => {
     if (!isLoggedIn) {
       if (idleTimerRef.current) {
@@ -556,41 +401,23 @@ export const useIdleWarning = () => {
         idleTimerRef.current = null;
       }
       if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
+        clearTimeout(countdownTimerRef.current);
         countdownTimerRef.current = null;
       }
     }
   }, [isLoggedIn]);
 
-  // Handle modal dismissal - increment warning count if user was active and no progression happened
   const handleModalDismissal = useCallback(() => {
-    console.log("Modal dismissed by user - Current state:", {
-      idleWarningCount,
-      isUserActive,
-      isIdleWarningActive,
-    });
-
-    // Stop any active countdown timer when user dismisses modal
     if (countdownTimerRef.current) {
       clearTimeout(countdownTimerRef.current);
       countdownTimerRef.current = null;
     }
     isCountingDownRef.current = false;
-
-    // Always increment warning count when user dismisses modal
     const newWarningCount = idleWarningCount + 1;
     setIdleWarningCount(newWarningCount);
-
-    console.log("Warning dismissed - advancing to level:", newWarningCount);
-
-    // Reset user active state for next warning cycle
     setIsUserActive(false);
-
-    // Close modal and return to work app
     setIsIdleWarningActive(false);
     setModalIsOpen(false);
-
-    // Broadcast modal dismissal to other tabs to keep them in sync
     localStorage.setItem(
       "idle-modal-dismissed",
       JSON.stringify({
@@ -599,14 +426,9 @@ export const useIdleWarning = () => {
         tabId: Math.random().toString(36).substr(2, 9),
       })
     );
-
-    // Always restart idle timer to continue monitoring
-    // The resetIdleTimer logic will handle what happens when count >= 3
     resetIdleTimer();
   }, [
     idleWarningCount,
-    isUserActive,
-    isIdleWarningActive,
     setIdleWarningCount,
     setIsUserActive,
     setIsIdleWarningActive,
