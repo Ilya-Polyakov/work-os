@@ -96,6 +96,21 @@ export const useStorageSync = (tabId: string) => {
           }
 
           if (
+            state.isLoading &&
+            !state.loadingController && // Controller is gone
+            !currentState.isLoggedIn &&
+            currentState.isLoading &&
+            state.username
+          ) {
+            setLoadingProgress(100);
+            setTimeout(() => {
+              setIsLoggedIn(true);
+              setIsLoading(false);
+              setUsername(state.username);
+            }, 500);
+          }
+
+          if (
             state.totalClicks !== undefined &&
             state.totalClicks > currentState.totalClicks
           ) {
