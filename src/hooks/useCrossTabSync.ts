@@ -268,7 +268,8 @@ export const useCrossTabSync = () => {
             newStateData?.isLoggedIn === currentlyLoggedIn &&
             newStateData?.isLoading === currentIsLoading &&
             newStateData?.username === currentUsername &&
-            newStateData?.loadingProgress === currentLoadingProgress &&
+            newStateData?.loadingProgress ===
+              useWorkOSStore.getState().loadingProgress &&
             newStateData?.totalClicks === currentTotalClicks
           ) {
             // No state change, ignore event
