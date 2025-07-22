@@ -15,8 +15,8 @@ export const useStorageSync = (tabId: string) => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "user-logout" && e.newValue) {
         setIsLoggedIn(false);
-        setIsLoading(false); // Ensure loading state is cleared
-        setLoadingProgress(0); // Reset progress bar to 0
+        setIsLoading(false);
+        setLoadingProgress(0);
         setLoadingController(null);
         setUsername("");
 
@@ -46,7 +46,6 @@ export const useStorageSync = (tabId: string) => {
                 const logoutData = JSON.parse(recentLogout);
                 const timeSinceLogout = Date.now() - logoutData.timestamp;
                 if (timeSinceLogout < 2000) {
-                  // 2 second window
                   return true;
                 }
               } catch {
