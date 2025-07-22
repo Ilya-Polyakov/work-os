@@ -10,6 +10,8 @@ import LoginProgressBar from "./LoginProgressBar";
 import useWorkOSStore from "@/hooks/useWorkOSStore";
 import { useCrossTabSync } from "@/hooks/cross-tab-sync/useCrossTabSync";
 
+import { LOADING_DURATION } from "@/constants/timing";
+
 const Login = () => {
   const {
     setIsLoggedIn,
@@ -68,7 +70,7 @@ const Login = () => {
       setUsername(formData.get("username") as string);
 
       // Use cross-tab synchronized loading simulation
-      simulateLoading(12000, () => {
+      simulateLoading(LOADING_DURATION, () => {
         setIsLoggedIn(true);
         setIsLoading(false);
         setLoadingProgress(0);

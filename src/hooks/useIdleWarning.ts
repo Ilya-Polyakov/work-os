@@ -1,8 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import useWorkOSStore from "./useWorkOSStore";
 
-const IDLE_TIMEOUT = 5000; // 5 seconds
-const COUNTDOWN_DURATION = 10; // 10 seconds
+import { IDLE_TIMEOUT, COUNTDOWN_DURATION } from "@/constants/timing";
 
 export const useIdleWarning = () => {
   const {

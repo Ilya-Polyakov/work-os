@@ -6,6 +6,8 @@ import Window from "./Window";
 import useWorkOSStore from "@/hooks/useWorkOSStore";
 import { useIdleWarning } from "@/hooks/useIdleWarning";
 
+import { IDLE_TIMEOUT } from "@/constants/timing";
+
 interface ModalWindowProps {
   isOpen: boolean;
   onClose: () => void;
@@ -63,7 +65,7 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
     const warningTitles = ["First Warning", "Second Warning", "Final Warning"];
 
     const warningMessages = [
-      "You have been idle for over 30 seconds.",
+      `You have been idle for over ${IDLE_TIMEOUT / 1000} seconds.`,
       "Return to work immediately.",
       "There will be consequences.",
     ];
