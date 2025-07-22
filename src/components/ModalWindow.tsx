@@ -4,7 +4,7 @@ import Image from "next/image";
 
 import Window from "./Window";
 import useWorkOSStore from "@/hooks/useWorkOSStore";
-import { useIdleWarning } from "@/hooks/useIdleWarning";
+import { useIdleWarning } from "@/hooks/idle-warning/useIdleWarning";
 
 import { IDLE_TIMEOUT } from "@/constants/timing";
 

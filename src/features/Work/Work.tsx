@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import useWorkOSStore from "@/hooks/useWorkOSStore";
 import { useCrossTabSync } from "@/hooks/cross-tab-sync/useCrossTabSync";
-import { useIdleWarning } from "@/hooks/useIdleWarning";
+import { useIdleWarning } from "@/hooks/idle-warning/useIdleWarning";
 import Window from "@/components/Window";
 
 import capitalizeWord from "@/utils/capitalizeWord";
