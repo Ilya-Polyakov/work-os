@@ -106,6 +106,9 @@ export const useCrossTabSync = () => {
       currentState.loadingController !== tabId.current &&
       !currentState.isLoggedIn
     ) {
+      console.log(
+        `Tab ${tabId.current}: Syncing loading state from controller ${currentState.loadingController}`
+      );
       setIsLoading(true);
       setUsername(currentState.username);
       setLoadingProgress(currentState.loadingProgress);
@@ -165,8 +168,24 @@ export const useCrossTabSync = () => {
         const elapsedTime = Date.now() - startTime;
 
         if (elapsedTime >= totalDuration) {
-          // Loading complete
           setLoadingProgress(100);
+
+          // Broadcast final state to localStorage so followers can complete login
+          const currentState = useWorkOSStore.getState();
+          localStorage.setItem(
+            "work-os-storage",
+            JSON.stringify({
+              state: {
+                isLoggedIn: true,
+                username: currentState.username,
+                isLoading: false,
+                loadingController: null,
+                loadingProgress: 100,
+                totalClicks: currentState.totalClicks,
+              },
+            })
+          );
+
           setTimeout(() => {
             onComplete();
             setLoadingController(null); // Release control
@@ -202,9 +221,10 @@ export const useCrossTabSync = () => {
     const handleStorageChange = (e: StorageEvent) => {
       // Handle explicit user logout broadcast - this takes PRIORITY over everything else
       if (e.key === "user-logout" && e.newValue) {
-        // Just set the logged out state - no navigation needed since we're already at "/"
-        // Process logout broadcast regardless of current login state to ensure all tabs sync
         setIsLoggedIn(false);
+        setIsLoading(false); // <-- Add this line
+        setLoadingProgress(0); // <-- Add this line
+        setLoadingController(null); // <-- Add this line
         setUsername("");
 
         // Also clear any idle warning state
@@ -325,6 +345,23 @@ export const useCrossTabSync = () => {
               setIsLoading(false);
               setUsername(newStateData.username);
             }
+          }
+
+          // Sync loading state when a new login starts in another tab (controller)
+          if (
+            newStateData?.isLoading &&
+            newStateData?.loadingController &&
+            newStateData.loadingController !== tabId.current &&
+            !currentIsLoading // Only sync if we're NOT already loading
+          ) {
+            console.log(
+              `Tab ${tabId.current}: Syncing loading state from controller ${newStateData.loadingController} (via storage event)`
+            );
+            setIsLoading(true);
+            setUsername(newStateData.username);
+            setLoadingProgress(newStateData.loadingProgress);
+            setLoadingController(newStateData.loadingController);
+            lastProgressUpdate.current = Date.now();
           }
 
           // Sync loading progress from the controlling tab (but only if we're not the controller and already loading)

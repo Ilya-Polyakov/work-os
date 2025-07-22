@@ -30,9 +30,11 @@ const Login = () => {
   // Sync local loading state with store, but prevent it from going false too quickly
   useEffect(() => {
     if (isLoading) {
+      console.log("Login is loading, setting local state to true");
       // If store says loading, immediately set local to loading
       setLocalIsLoading(true);
     } else {
+      console.log("Login is no longer loading, setting local state to false");
       // If store says not loading, add a small delay to prevent flicker
       const delay = setTimeout(() => {
         setLocalIsLoading(false);
