@@ -2,34 +2,38 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 
-import Window from "./Window";
+import Window from "@/components/Window";
 import useWorkOSStore from "@/hooks/useWorkOSStore";
 import { useIdleWarning } from "@/hooks/idle-warning/useIdleWarning";
 
 import { IDLE_TIMEOUT } from "@/constants/timing";
 
-interface ModalWindowProps {
+import {
+  warningTitles,
+  warningMessages,
+  loggedOutCopy,
+  userActiveCopy,
+  defaultWarningCopy,
+} from "./WarningWindowCopy";
+
+interface WarningWindowProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
+const WarningWindow = ({ isOpen, onClose }: WarningWindowProps) => {
   const [isMounted, setIsMounted] = useState(false);
   const { idleWarningCount, isUserActive, idleCountdown, isLoggedOutFromIdle } =
     useWorkOSStore();
 
-  // Get idle warning functions
   const { handleModalDismissal } = useIdleWarning();
 
   useEffect(() => {
-    // Set mounted to true after component mounts (client-side)
     setIsMounted(true);
   }, []);
 
-  // Don't render anything on server-side or if not open
   if (!isMounted || !isOpen) return null;
 
-  // Close modal handler
   const handleClose = () => {
     // If this is a logout modal, handle differently
     if (isLoggedOutFromIdle) {
@@ -44,42 +48,28 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
     handleModalDismissal();
 
     onClose();
-
-    // Don't restart idle timer automatically - wait for real user activity
-    // The idle timer will restart when handleActivity detects real activity
   };
 
   // Get warning content based on state
   const getWarningContent = () => {
     if (isLoggedOutFromIdle) {
       return {
-        title: "Logged Out!",
-        message:
-          "You have been logged out due to inactivity. Report to your nearest supervisor for reprimanding.",
+        ...loggedOutCopy,
         showCountdown: false,
         showButton: true,
-        buttonText: "OK",
       };
     }
 
-    const warningTitles = ["First Warning", "Second Warning", "Final Warning"];
-
-    const warningMessages = [
-      `You have been idle for over ${IDLE_TIMEOUT / 1000} seconds.`,
-      "Return to work immediately.",
-      "There will be consequences.",
-    ];
-
-    const title = warningTitles[idleWarningCount] || "Warning";
-    const message = warningMessages[idleWarningCount] || "You have been idle.";
+    const title = warningTitles[idleWarningCount] || defaultWarningCopy.title;
+    const message =
+      warningMessages[idleWarningCount]?.(IDLE_TIMEOUT) ||
+      defaultWarningCopy.message;
 
     if (isUserActive) {
       return {
-        title: "Welcome back, Employee!",
-        message: "Great, you're working again.",
+        ...userActiveCopy,
         showCountdown: false,
         showButton: true,
-        buttonText: "Continue",
       };
     }
 
@@ -88,7 +78,7 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
       message,
       showCountdown: true,
       showButton: true,
-      buttonText: "Continue",
+      buttonText: defaultWarningCopy.buttonText,
     };
   };
 
@@ -148,4 +138,4 @@ const ModalWindow = ({ isOpen, onClose }: ModalWindowProps) => {
   );
 };
 
-export default ModalWindow;
+export default WarningWindow;
