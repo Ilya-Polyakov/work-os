@@ -75,6 +75,7 @@ export const useIdleWarning = () => {
     resetIdleTimer,
   ]);
 
+  // Listen for cross-tab localStorage events and synchronize idle warning state and timers.
   useEffect(() => {
     const handler = createStorageHandler({
       isCountingDownRef,
@@ -112,6 +113,7 @@ export const useIdleWarning = () => {
     setRequestingTabId,
   ]);
 
+  // Attach activity listeners (mouse, keyboard, etc.) and reset timers on login
   useEffect(() => {
     if (!isLoggedIn) return;
     const events = ["keydown", "click", "mousemove"];
@@ -134,6 +136,7 @@ export const useIdleWarning = () => {
     };
   }, [isLoggedIn, handleActivity, resetIdleTimer]);
 
+  // On login, request idle state from other tabs and start timers if needed
   useEffect(() => {
     if (!isLoggedIn) return;
     const currentState = useWorkOSStore.getState();
@@ -170,6 +173,7 @@ export const useIdleWarning = () => {
     resetIdleTimer,
   ]);
 
+  // Cleanup timers if user logs out
   useEffect(() => {
     if (!isLoggedIn) {
       if (idleTimerRef.current) {
