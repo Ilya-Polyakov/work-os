@@ -453,6 +453,7 @@ export const useCrossTabSync = () => {
     currentUsername,
     currentIsLoading,
     currentTotalClicks,
+    currentLoadingProgress,
     setIsLoggedIn,
     setUsername,
     setIsLoading,
