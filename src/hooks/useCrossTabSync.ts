@@ -12,6 +12,7 @@ export const useCrossTabSync = () => {
     setIsLoading,
     setLoadingProgress,
     setLoadingController,
+    loadingProgress: currentLoadingProgress,
     isLoggedIn: currentlyLoggedIn,
     username: currentUsername,
     loadingController,
@@ -267,8 +268,7 @@ export const useCrossTabSync = () => {
             newStateData?.isLoggedIn === currentlyLoggedIn &&
             newStateData?.isLoading === currentIsLoading &&
             newStateData?.username === currentUsername &&
-            newStateData?.loadingProgress ===
-              useWorkOSStore.getState().loadingProgress &&
+            newStateData?.loadingProgress === currentLoadingProgress &&
             newStateData?.totalClicks === currentTotalClicks
           ) {
             // No state change, ignore event
@@ -330,7 +330,8 @@ export const useCrossTabSync = () => {
           // Handle totalClicks sync (sync clicks across tabs)
           if (
             newStateData?.totalClicks !== undefined &&
-            newStateData.totalClicks !== currentTotalClicks
+            newStateData.totalClicks !== currentTotalClicks &&
+            newStateData.totalClicks > currentTotalClicks // prevent improper syncing
           ) {
             console.log("🔄 Syncing totalClicks across tabs:");
             useWorkOSStore.setState({ totalClicks: newStateData.totalClicks });
