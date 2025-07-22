@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import useWorkOSStore from "@/hooks/useWorkOSStore";
 
 export const useStorageSync = (tabId: string) => {
@@ -11,38 +11,50 @@ export const useStorageSync = (tabId: string) => {
     clearLogoutFlag,
   } = useWorkOSStore();
 
+  // Track pending auto-complete login timeout
+  const autoCompleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastProgressUpdateRef = useRef(0);
+
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
+      // Helper to check for recent logout
+      function isRecentLogout() {
+        const recentLogout = localStorage.getItem("user-logout");
+        if (recentLogout) {
+          try {
+            const logoutData = JSON.parse(recentLogout);
+            const timeSinceLogout = Date.now() - logoutData.timestamp;
+            if (timeSinceLogout < 2000) return true;
+          } catch {}
+        }
+        return false;
+      }
+
       if (e.key === "user-logout" && e.newValue) {
+        if (autoCompleteTimeoutRef.current) {
+          clearTimeout(autoCompleteTimeoutRef.current);
+          autoCompleteTimeoutRef.current = null;
+        }
         setIsLoggedIn(false);
         setIsLoading(false);
         setLoadingProgress(0);
         setLoadingController(null);
         setUsername("");
-
         const {
           setIsLoggedOutFromIdle,
           setModalIsOpen,
           resetIdleWarningSystem,
         } = useWorkOSStore.getState();
-
         setIsLoggedOutFromIdle(false);
         setModalIsOpen(false);
         resetIdleWarningSystem();
-
         setTimeout(clearLogoutFlag, 100);
         return;
       }
 
-      let lastProgressUpdate = 0;
-
-      function setThrottledLoadingProgress(progress: number) {
-        const now = Date.now();
-        if (now - lastProgressUpdate > 400) {
-          // 400ms throttle
-          useWorkOSStore.getState().setLoadingProgress(progress);
-          lastProgressUpdate = now;
-        }
+      // Guard: If a recent logout happened, ignore all work-os-storage events
+      if (e.key === "work-os-storage" && e.newValue && isRecentLogout()) {
+        return;
       }
 
       if (e.key === "work-os-storage" && e.newValue) {
@@ -50,31 +62,21 @@ export const useStorageSync = (tabId: string) => {
           const { state } = JSON.parse(e.newValue);
           const currentState = useWorkOSStore.getState();
 
-          function shouldIgnoreLoginFn() {
-            const recentLogout = localStorage.getItem("user-logout");
-            if (recentLogout) {
-              try {
-                const logoutData = JSON.parse(recentLogout);
-                const timeSinceLogout = Date.now() - logoutData.timestamp;
-                if (timeSinceLogout < 2000) {
-                  return true;
-                }
-              } catch {
-                // Ignore parsing errors
-              }
+          function setThrottledLoadingProgress(progress: number) {
+            const now = Date.now();
+            if (now - lastProgressUpdateRef.current > 400) {
+              // 400ms throttle
+              useWorkOSStore.getState().setLoadingProgress(progress);
+              lastProgressUpdateRef.current = now;
             }
-            return false;
           }
-
-          const shouldIgnoreLogin = shouldIgnoreLoginFn();
 
           // Initial loading sync
           if (
             state.isLoading &&
             state.loadingController &&
             state.loadingController !== tabId &&
-            !currentState.isLoading &&
-            !shouldIgnoreLogin
+            !currentState.isLoading
           ) {
             setIsLoading(true);
             setUsername(state.username);
@@ -114,10 +116,17 @@ export const useStorageSync = (tabId: string) => {
             state.username
           ) {
             setThrottledLoadingProgress(100);
-            setTimeout(() => {
-              setIsLoggedIn(true);
-              setIsLoading(false);
-              setUsername(state.username);
+            if (autoCompleteTimeoutRef.current) {
+              clearTimeout(autoCompleteTimeoutRef.current);
+            }
+            autoCompleteTimeoutRef.current = setTimeout(() => {
+              // Double-check before setting logged in
+              if (!isRecentLogout()) {
+                setIsLoggedIn(true);
+                setIsLoading(false);
+                setUsername(state.username);
+              }
+              autoCompleteTimeoutRef.current = null;
             }, 500);
           }
 
@@ -134,7 +143,12 @@ export const useStorageSync = (tabId: string) => {
     };
 
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      if (autoCompleteTimeoutRef.current) {
+        clearTimeout(autoCompleteTimeoutRef.current);
+      }
+    };
   }, [
     tabId,
     setIsLoggedIn,
