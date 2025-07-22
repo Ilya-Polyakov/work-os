@@ -8,7 +8,7 @@ import LoginForm from "./LoginForm";
 import LoginProgressBar from "./LoginProgressBar";
 
 import useWorkOSStore from "@/hooks/useWorkOSStore";
-import { useCrossTabSync } from "@/hooks/useCrossTabSync";
+import { useCrossTabSync } from "@/hooks/cross-tab-sync/useCrossTabSync";
 
 const Login = () => {
   const {
@@ -68,16 +68,12 @@ const Login = () => {
       setUsername(formData.get("username") as string);
 
       // Use cross-tab synchronized loading simulation
-      simulateLoading(
-        12000,
-        () => {
-          setIsLoggedIn(true);
-          setIsLoading(false);
-          setLoadingProgress(0);
-          setLoadingController(null);
-        },
-        tabId
-      );
+      simulateLoading(12000, () => {
+        setIsLoggedIn(true);
+        setIsLoading(false);
+        setLoadingProgress(0);
+        setLoadingController(null);
+      });
     } else {
       window.alert("Login failed: Invalid username or password.");
     }

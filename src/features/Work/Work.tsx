@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import useWorkOSStore from "@/hooks/useWorkOSStore";
-import { useCrossTabSync } from "@/hooks/useCrossTabSync";
+import { useCrossTabSync } from "@/hooks/cross-tab-sync/useCrossTabSync";
 import { useIdleWarning } from "@/hooks/useIdleWarning";
 import Window from "@/components/Window";
 
