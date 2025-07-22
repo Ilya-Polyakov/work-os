@@ -231,31 +231,6 @@ export const useCrossTabSync = () => {
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "work-os-storage" && e.newValue) {
-        try {
-          const newState = JSON.parse(e.newValue);
-          const newStateData = newState.state;
-
-          // If controller is gone and we're still loading, auto-complete
-          if (
-            newStateData?.isLoading &&
-            !newStateData?.loadingController &&
-            !currentlyLoggedIn &&
-            currentIsLoading &&
-            newStateData?.username &&
-            newStateData.username.trim() !== ""
-          ) {
-            setLoadingProgress(100);
-            setTimeout(() => {
-              setIsLoggedIn(true);
-              setIsLoading(false);
-              setUsername(newStateData.username);
-            }, 500);
-            return;
-          }
-        } catch {}
-      }
-
       // Handle explicit user logout broadcast - this takes PRIORITY over everything else
       if (e.key === "user-logout" && e.newValue) {
         setIsLoggedIn(false);
@@ -293,9 +268,28 @@ export const useCrossTabSync = () => {
             newStateData?.isLoading === currentIsLoading &&
             newStateData?.username === currentUsername &&
             newStateData?.loadingProgress ===
-              useWorkOSStore.getState().loadingProgress
+              useWorkOSStore.getState().loadingProgress &&
+            newStateData?.totalClicks === currentTotalClicks
           ) {
             // No state change, ignore event
+            return;
+          }
+
+          // If controller is gone and we're still loading, auto-complete
+          if (
+            newStateData?.isLoading &&
+            !newStateData?.loadingController &&
+            !currentlyLoggedIn &&
+            currentIsLoading &&
+            newStateData?.username &&
+            newStateData.username.trim() !== ""
+          ) {
+            setLoadingProgress(100);
+            setTimeout(() => {
+              setIsLoggedIn(true);
+              setIsLoading(false);
+              setUsername(newStateData.username);
+            }, 500);
             return;
           }
 
@@ -303,11 +297,14 @@ export const useCrossTabSync = () => {
             isLoggedIn: newStateData?.isLoggedIn,
             username: newStateData?.username,
             isLoading: newStateData?.isLoading,
+            loadingController: newStateData?.loadingController,
+            totalClicks: newStateData?.totalClicks,
           });
           console.log("🔍 Current local state:", {
             currentlyLoggedIn,
             currentUsername,
             currentIsLoading,
+            currentTotalClicks,
           });
 
           // CRITICAL: Check if we just received a user-logout broadcast recently
@@ -327,13 +324,15 @@ export const useCrossTabSync = () => {
             }
           }
 
+          // console.log("currentTotalClicks:", currentTotalClicks);
+          // console.log("newStateData.totalClicks:", newStateData?.totalClicks);
+
           // Handle totalClicks sync (sync clicks across tabs)
           if (
             newStateData?.totalClicks !== undefined &&
             newStateData.totalClicks !== currentTotalClicks
           ) {
-            // Don't use incrementClicks or resetClicks as they would trigger more storage events
-            // Instead, set the totalClicks directly via the store
+            console.log("🔄 Syncing totalClicks across tabs:");
             useWorkOSStore.setState({ totalClicks: newStateData.totalClicks });
           }
 
