@@ -39,6 +39,42 @@ export const useStorageSync = (tabId: string) => {
           const { state } = JSON.parse(e.newValue);
           const currentState = useWorkOSStore.getState();
 
+          // Initial loading sync
+          if (
+            state.isLoading &&
+            state.loadingController &&
+            state.loadingController !== tabId &&
+            !currentState.isLoading
+          ) {
+            setIsLoading(true);
+            setUsername(state.username);
+            setLoadingProgress(state.loadingProgress);
+            setLoadingController(state.loadingController);
+          }
+
+          // Progress sync
+          if (
+            state.isLoading &&
+            state.loadingController &&
+            state.loadingController !== tabId &&
+            typeof state.loadingProgress === "number" &&
+            currentState.isLoading
+          ) {
+            setLoadingProgress(state.loadingProgress);
+          }
+
+          // Complete login if another tab finished logging in
+          if (
+            state.isLoggedIn &&
+            state.username &&
+            !state.isLoading &&
+            !currentState.isLoggedIn
+          ) {
+            setIsLoggedIn(true);
+            setIsLoading(false);
+            setUsername(state.username);
+          }
+
           if (
             state.totalClicks !== undefined &&
             state.totalClicks > currentState.totalClicks
