@@ -95,9 +95,10 @@ export const useStorageSync = (tabId: string) => {
             setUsername(state.username);
           }
 
+          // Handle case where loading controller is gone
           if (
             state.isLoading &&
-            !state.loadingController && // Controller is gone
+            !state.loadingController &&
             !currentState.isLoggedIn &&
             currentState.isLoading &&
             state.username
