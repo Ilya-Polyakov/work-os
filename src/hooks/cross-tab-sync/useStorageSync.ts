@@ -13,7 +13,7 @@ export const useStorageSync = (tabId: string) => {
 
   // Track pending auto-complete login timeout
   const autoCompleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastProgressUpdateRef = useRef(0);
+  const lastProgressUpdateRef = useRef(0); // is used to throttle how often the loading progress is updated in response to cross-tab sync events.
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
@@ -62,6 +62,7 @@ export const useStorageSync = (tabId: string) => {
           const { state } = JSON.parse(e.newValue);
           const currentState = useWorkOSStore.getState();
 
+          // This prevents rapid, repeated updates to the loading progress, which could cause unnecessary re-renders or UI flicker.
           function setThrottledLoadingProgress(progress: number) {
             const now = Date.now();
             if (now - lastProgressUpdateRef.current > 400) {

@@ -1,6 +1,11 @@
 import { useEffect, useRef } from "react";
 import useWorkOSStore from "@/hooks/useWorkOSStore";
 
+/**
+ * Hook to check if the controller is healthy and update the loading state accordingly.
+ * This is used to ensure that the loading state is correctly set when the controller is not available.
+ * It is a backup for useLoadingSafetyCheck and is used to handle cases where the loading controller might be missing or stale.
+ */
 export const useControllerHealthCheck = (tabId: string) => {
   const {
     isLoading,
@@ -31,6 +36,7 @@ export const useControllerHealthCheck = (tabId: string) => {
           }
         })();
 
+        // Periodically checks if the loading controller is missing or stale. If so, it completes the loading process and logs in the user.
         if (
           timeSinceLast > 3000 &&
           state.isLoading &&

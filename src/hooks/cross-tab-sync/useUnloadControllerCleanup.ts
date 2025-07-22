@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import useWorkOSStore from "@/hooks/useWorkOSStore";
 
+// Hook to clean up the loading controller state when this tab unloads or is closed.
+// Ensures that if the current tab is the loading controller and is still loading,
+// it releases control so other tabs can recover and continue the login process.
 export const useUnloadControllerCleanup = (tabId: string) => {
   const { setLoadingController } = useWorkOSStore();
 
