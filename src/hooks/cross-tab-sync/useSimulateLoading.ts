@@ -1,8 +1,15 @@
-import { useCallback } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import useWorkOSStore from "@/hooks/useWorkOSStore";
 
 export const useSimulateLoading = (tabId: string) => {
   const { setLoadingProgress, setLoadingController } = useWorkOSStore();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return useCallback(
     (duration: number, onComplete: () => void) => {
@@ -31,7 +38,7 @@ export const useSimulateLoading = (tabId: string) => {
             })
           );
 
-          setTimeout(() => {
+          timeoutRef.current = setTimeout(() => {
             onComplete();
             setLoadingController(null);
           }, 1000);
@@ -51,7 +58,7 @@ export const useSimulateLoading = (tabId: string) => {
         setLoadingProgress(Math.floor(currentProgress));
 
         const delay = Math.random() * 700 + 100;
-        setTimeout(updateProgress, delay);
+        timeoutRef.current = setTimeout(updateProgress, delay);
       };
 
       updateProgress();
