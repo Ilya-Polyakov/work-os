@@ -79,7 +79,7 @@ const useWorkOSStore = create<WorkOSStore>()(
       idleCountdown: 10,
       isIdleWarningActive: false,
       isUserActive: false,
-      lastActivityTime: Date.now(),
+      lastActivityTime: 0,
       isLoggedOutFromIdle: false,
       requestingTabId: null,
 
@@ -109,7 +109,7 @@ const useWorkOSStore = create<WorkOSStore>()(
           idleCountdown: 10,
           isIdleWarningActive: false,
           isUserActive: false,
-          lastActivityTime: Date.now(),
+          lastActivityTime: 0,
           isLoggedOutFromIdle: false,
           requestingTabId: null,
         }),
@@ -151,7 +151,7 @@ const useWorkOSStore = create<WorkOSStore>()(
           idleCountdown: 10,
           isIdleWarningActive: false,
           isUserActive: false,
-          lastActivityTime: Date.now(),
+          lastActivityTime: 0,
           isLoggedOutFromIdle: false,
         };
 

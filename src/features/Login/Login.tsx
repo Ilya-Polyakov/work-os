@@ -21,6 +21,7 @@ const Login = () => {
     loadingProgress,
     setLoadingProgress,
     setLoadingController,
+    setLastActivityTime,
   } = useWorkOSStore();
 
   // Get cross-tab sync functions
@@ -75,6 +76,7 @@ const Login = () => {
         setIsLoading(false);
         setLoadingProgress(0);
         setLoadingController(null);
+        setLastActivityTime(Date.now());
       });
     } else {
       window.alert("Login failed: Invalid username or password.");
