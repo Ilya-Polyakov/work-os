@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import confetti from "canvas-confetti";
 
 import useWorkOSStore from "@/hooks/useWorkOSStore";
 import { useCrossTabSync } from "@/hooks/cross-tab-sync/useCrossTabSync";
@@ -8,17 +10,42 @@ import Window from "@/components/Window";
 
 import capitalizeWord from "@/utils/capitalizeWord";
 
+const confettiConfig = {
+  particleCount: 100,
+  spread: 70,
+  origin: { y: 0.6 },
+};
+
 const Work = () => {
   const { username, resetStore, totalClicks, incrementClicks } =
     useWorkOSStore();
 
   const displayName = username ? capitalizeWord(username) : "User";
 
-  // Enable cross-tab logout synchronization only
   useCrossTabSync();
-
-  // Enable idle warning system
   useIdleWarning();
+
+  const handleWorkButtonClick = () => {
+    const nextTotal = totalClicks + 1;
+    incrementClicks();
+    if (nextTotal % 12 === 0) {
+      confetti(confettiConfig);
+      localStorage.setItem(
+        "confetti-event",
+        JSON.stringify({ timestamp: Date.now() })
+      );
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === "confetti-event" && e.newValue) {
+        confetti(confettiConfig);
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
 
   return (
     <div className="flex items-center justify-center min-h-screen">
@@ -43,7 +70,7 @@ const Work = () => {
               <p>Do NOT be idle.</p>
 
               <div className="flex flex-col items-center gap-2">
-                <button onClick={incrementClicks}>
+                <button onClick={handleWorkButtonClick}>
                   Push this Button ({totalClicks})
                 </button>
                 <p className="text-center">
